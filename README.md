@@ -1,8 +1,55 @@
-# Relay
+<p align="center">
+  <img src="Relay/Assets.xcassets/AppIcon.appiconset/icon.png" width="96" alt="Relay's mint pixel-heart icon">
+</p>
 
-A native iPhone app for sending Apple Health data to a private Open Wearables server. The smoky teal design is implemented with SwiftUI, stock iOS 26 Liquid Glass navigation/actions, native toggles and sheets, custom translucent content surfaces, a mint pixel-heart app icon, and animated pixel athletes.
+<h1 align="center">Relay</h1>
 
-## Open and install
+<p align="center"><strong>Your health data. Your server.</strong></p>
+
+<p align="center">Apple Health → Open Wearables<br>Native SwiftUI · iOS 26+ · Liquid Glass · Pixel art</p>
+
+<p align="center">
+  <a href="#get-started">Get started</a> ·
+  <a href="docs/COVERAGE.md">Health data coverage</a> ·
+  <a href="docs/OPEN-WEARABLES-AGENT-HANDOFF.example.md">Connect an AI agent</a>
+</p>
+
+Relay sends the Apple Health records you choose to your own Open Wearables server. Explore your history, ask your agents questions about it, and build your own workflows around the data.
+
+A smoky teal interface pairs native Liquid Glass controls with a mint pixel heart and athletes that cycle through gym, running, cycling and tennis.
+
+## A look inside
+
+<table>
+  <tr>
+    <th>Sync</th>
+    <th>Health data</th>
+    <th>Settings</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/sync.png" width="280" alt="Relay Sync screen with sample upload counts and a pixel athlete"></td>
+    <td><img src="docs/screenshots/data.png" width="280" alt="Relay Health data screen with activity, vitals, sleep and workout groups"></td>
+    <td><img src="docs/screenshots/settings.png" width="280" alt="Relay Settings screen with automatic sync, Wi-Fi-only and Health access controls"></td>
+  </tr>
+</table>
+
+*Actual iPhone Simulator screenshots. Every screen above uses demo mode and synthetic data; no personal health records or connection details are shown.*
+
+## What Relay does
+
+| Feature | How it works |
+| --- | --- |
+| Your server | Pair with your own HTTPS Open Wearables instance using a one-time invitation code. |
+| Your choice | Read only the Apple Health categories you allow. Relay never writes to Apple Health. |
+| Resumable history | Import available history in small batches, then pick up new records with anchored queries. |
+| Automatic updates | Sync while open and during background opportunities scheduled by iOS. |
+| Connection recovery | Keep pending batches on the iPhone and retry when the server is reachable. |
+| Native interface | SwiftUI, Liquid Glass navigation, system controls, accessibility text sizes and Reduce Motion support. |
+| Agent access | Connect a separate agent to the server through the official MCP adapter. |
+
+## Get started
+
+You need **iOS 26+**, **Xcode 26+**, a reachable **Open Wearables server** and an Apple signing team that supports the app's HealthKit entitlements. The reviewed server contract is Open Wearables **0.9.0**. The source includes the generated Xcode project and has no external runtime packages.
 
 1. Open `Relay.xcodeproj` in Xcode 26 or newer (built here with Xcode 27).
 2. Select the **Relay** target → **Signing & Capabilities** → choose your Apple development team. The HealthKit and background delivery entitlements are included. You need a signing team/provisioning profile that supports them.

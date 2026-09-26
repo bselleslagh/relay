@@ -1,0 +1,19 @@
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.DS_Store
+.codex/
+.xcodebuildmcp/
+Config/Local.xcconfig
+
+
+# Private connection details and local verification artifacts
+docs/OPEN-WEARABLES-AGENT-HANDOFF.md
+design/
+.env
+.env.*
+!.env.example
+*.mobileprovision
+*.p12
+*.xcresult/

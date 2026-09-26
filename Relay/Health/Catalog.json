@@ -1,0 +1,499 @@
+[
+  {
+    "id": "HKQuantityTypeIdentifierHeartRate",
+    "title": "Heart Rate",
+    "group": "vitals",
+    "unit": "count/min",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierRestingHeartRate",
+    "title": "Resting Heart Rate",
+    "group": "vitals",
+    "unit": "count/min",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierHeartRateVariabilitySDNN",
+    "title": "Heart Rate Variability (SDNN)",
+    "group": "vitals",
+    "unit": "ms",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierHeartRateRecoveryOneMinute",
+    "title": "Heart Rate Recovery One Minute",
+    "group": "vitals",
+    "unit": "count/min",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierWalkingHeartRateAverage",
+    "title": "Walking Heart Rate Average",
+    "group": "vitals",
+    "unit": "count/min",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierOxygenSaturation",
+    "title": "Oxygen Saturation",
+    "group": "vitals",
+    "unit": "%",
+    "scale": 100
+  },
+  {
+    "id": "HKQuantityTypeIdentifierBloodGlucose",
+    "title": "Blood Glucose",
+    "group": "vitals",
+    "unit": "mg/dL",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierBloodPressureSystolic",
+    "title": "Blood Pressure Systolic",
+    "group": "vitals",
+    "unit": "mmHg",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierBloodPressureDiastolic",
+    "title": "Blood Pressure Diastolic",
+    "group": "vitals",
+    "unit": "mmHg",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierRespiratoryRate",
+    "title": "Respiratory Rate",
+    "group": "vitals",
+    "unit": "count/min",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierHeight",
+    "title": "Height",
+    "group": "body",
+    "unit": "m",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierBodyMass",
+    "title": "Body Mass",
+    "group": "body",
+    "unit": "kg",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierBodyFatPercentage",
+    "title": "Body Fat Percentage",
+    "group": "body",
+    "unit": "%",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierBodyMassIndex",
+    "title": "Body Mass Index",
+    "group": "body",
+    "unit": "count",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierLeanBodyMass",
+    "title": "Lean Body Mass",
+    "group": "body",
+    "unit": "kg",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierBodyTemperature",
+    "title": "Body Temperature",
+    "group": "body",
+    "unit": "degC",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierVO2Max",
+    "title": "VO\u2082Max",
+    "group": "activity",
+    "unit": "ml/kg*min",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierSixMinuteWalkTestDistance",
+    "title": "Six Minute Walk Test Distance",
+    "group": "activity",
+    "unit": "m",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierStepCount",
+    "title": "Step Count",
+    "group": "activity",
+    "unit": "count",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierActiveEnergyBurned",
+    "title": "Active Energy Burned",
+    "group": "activity",
+    "unit": "kcal",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierBasalEnergyBurned",
+    "title": "Basal Energy Burned",
+    "group": "activity",
+    "unit": "kcal",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierAppleStandTime",
+    "title": "Stand Time",
+    "group": "activity",
+    "unit": "min",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierAppleExerciseTime",
+    "title": "Exercise Time",
+    "group": "activity",
+    "unit": "min",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierFlightsClimbed",
+    "title": "Flights Climbed",
+    "group": "activity",
+    "unit": "count",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierDistanceWalkingRunning",
+    "title": "Distance Walking Running",
+    "group": "activity",
+    "unit": "m",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierDistanceCycling",
+    "title": "Distance Cycling",
+    "group": "activity",
+    "unit": "m",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierDistanceSwimming",
+    "title": "Distance Swimming",
+    "group": "activity",
+    "unit": "m",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierDistanceDownhillSnowSports",
+    "title": "Distance Downhill Snow Sports",
+    "group": "activity",
+    "unit": "m",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierDistancePaddleSports",
+    "title": "Distance Paddle Sports",
+    "group": "activity",
+    "unit": "m",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierDistanceRowing",
+    "title": "Distance Rowing",
+    "group": "activity",
+    "unit": "m",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierDistanceSkatingSports",
+    "title": "Distance Skating Sports",
+    "group": "activity",
+    "unit": "m",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierDistanceWheelchair",
+    "title": "Distance Wheelchair",
+    "group": "activity",
+    "unit": "m",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierDistanceCrossCountrySkiing",
+    "title": "Distance Cross Country Skiing",
+    "group": "activity",
+    "unit": "m",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierWalkingStepLength",
+    "title": "Walking Step Length",
+    "group": "activity",
+    "unit": "m",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierWalkingSpeed",
+    "title": "Walking Speed",
+    "group": "activity",
+    "unit": "m/s",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierWalkingDoubleSupportPercentage",
+    "title": "Walking Double Support Percentage",
+    "group": "activity",
+    "unit": "%",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierWalkingAsymmetryPercentage",
+    "title": "Walking Asymmetry Percentage",
+    "group": "activity",
+    "unit": "%",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierAppleWalkingSteadiness",
+    "title": "Walking Steadiness",
+    "group": "activity",
+    "unit": "%",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierStairDescentSpeed",
+    "title": "Stair Descent Speed",
+    "group": "activity",
+    "unit": "m/s",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierStairAscentSpeed",
+    "title": "Stair Ascent Speed",
+    "group": "activity",
+    "unit": "m/s",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierRunningPower",
+    "title": "Running Power",
+    "group": "activity",
+    "unit": "W",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierRunningSpeed",
+    "title": "Running Speed",
+    "group": "activity",
+    "unit": "m/s",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierRunningVerticalOscillation",
+    "title": "Running Vertical Oscillation",
+    "group": "activity",
+    "unit": "cm",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierRunningGroundContactTime",
+    "title": "Running Ground Contact Time",
+    "group": "activity",
+    "unit": "ms",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierRunningStrideLength",
+    "title": "Running Stride Length",
+    "group": "activity",
+    "unit": "cm",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierSwimmingStrokeCount",
+    "title": "Swimming Stroke Count",
+    "group": "activity",
+    "unit": "count",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierEnvironmentalAudioExposure",
+    "title": "Environmental Audio Exposure",
+    "group": "environment",
+    "unit": "dBASPL",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierHeadphoneAudioExposure",
+    "title": "Headphone Audio Exposure",
+    "group": "environment",
+    "unit": "dBASPL",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierEnvironmentalSoundReduction",
+    "title": "Environmental Sound Reduction",
+    "group": "environment",
+    "unit": "dBASPL",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierTimeInDaylight",
+    "title": "Time In Daylight",
+    "group": "environment",
+    "unit": "min",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierWorkoutEffortScore",
+    "title": "Workout Effort Score",
+    "group": "activity",
+    "unit": "appleEffortScore",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierEstimatedWorkoutEffortScore",
+    "title": "Estimated Workout Effort Score",
+    "group": "activity",
+    "unit": "appleEffortScore",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierAppleMoveTime",
+    "title": "Move Time",
+    "group": "activity",
+    "unit": "min",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierAppleSleepingWristTemperature",
+    "title": "Sleeping Wrist Temperature",
+    "group": "body",
+    "unit": "degC",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierForcedVitalCapacity",
+    "title": "Forced Vital Capacity",
+    "group": "vitals",
+    "unit": "L",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierForcedExpiratoryVolume1",
+    "title": "Forced Expiratory Volume1",
+    "group": "vitals",
+    "unit": "L",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierPeakExpiratoryFlowRate",
+    "title": "Peak Expiratory Flow Rate",
+    "group": "vitals",
+    "unit": "L/min",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierBasalBodyTemperature",
+    "title": "Basal Body Temperature",
+    "group": "body",
+    "unit": "degC",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierAppleSleepingBreathingDisturbances",
+    "title": "Sleeping Breathing Disturbances",
+    "group": "vitals",
+    "unit": "count",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierWaistCircumference",
+    "title": "Waist Circumference",
+    "group": "body",
+    "unit": "cm",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierNumberOfTimesFallen",
+    "title": "Number Of Times Fallen",
+    "group": "other",
+    "unit": "count",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierInhalerUsage",
+    "title": "Inhaler Usage",
+    "group": "other",
+    "unit": "count",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierNumberOfAlcoholicBeverages",
+    "title": "Number Of Alcoholic Beverages",
+    "group": "other",
+    "unit": "count",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierUVExposure",
+    "title": "UVExposure",
+    "group": "environment",
+    "unit": "count",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierPushCount",
+    "title": "Push Count",
+    "group": "activity",
+    "unit": "count",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierUnderwaterDepth",
+    "title": "Underwater Depth",
+    "group": "environment",
+    "unit": "m",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierWaterTemperature",
+    "title": "Water Temperature",
+    "group": "body",
+    "unit": "degC",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierCyclingCadence",
+    "title": "Cycling Cadence",
+    "group": "activity",
+    "unit": "count/min",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierCyclingFunctionalThresholdPower",
+    "title": "Cycling Functional Threshold Power",
+    "group": "activity",
+    "unit": "W",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierCyclingPower",
+    "title": "Cycling Power",
+    "group": "activity",
+    "unit": "W",
+    "scale": 1
+  },
+  {
+    "id": "HKQuantityTypeIdentifierCyclingSpeed",
+    "title": "Cycling Speed",
+    "group": "activity",
+    "unit": "m/s",
+    "scale": 1
+  }
+]

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="How Relay handles Apple Health data and your connection to your own Open Wearables server.">
+  <title>Relay · Privacy policy</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; line-height: 1.65; }
+    body { max-width: 48rem; margin: auto; padding: 2rem 1.25rem 4rem; background: #f7faf9; color: #152e2a; }
+    h1, h2 { line-height: 1.2; } h1 { font-size: 2.4rem; } h2 { margin-top: 2rem; }
+    a { color: #087569; } @media (prefers-color-scheme: dark) { body { background: #102522; color: #edf6f3; } a { color: #83e5c5; } }
+    .meta { opacity: .7; } nav { display: flex; flex-wrap: wrap; gap: 1.25rem; }
+  </style>
+</head>
+<body>
+  <nav aria-label="Relay links"><a href="https://github.com/bselleslagh/relay">Relay on GitHub</a><a href="https://github.com/bselleslagh/relay/issues">Support</a></nav>
+  <main>
+    <h1>Relay privacy policy</h1>
+    <p class="meta">Last updated: October 1, 2026</p>
+    <p>Relay is an iPhone app by Ben Selleslagh. It reads the Apple Health records you allow and sends them directly to the Open Wearables server you choose. You bring your own server. Relay’s developer does not operate a health-data service for you and cannot access the health records you sync.</p>
+
+    <h2>Apple Health access</h2>
+    <p>Relay requests read access through Apple Health. You choose the categories it can read, including supported activity, fitness, vital signs, sleep, workouts and body measurements. Relay never writes to Apple Health.</p>
+    <p>The initial import and manual rescans cover the last 30 days. Later syncs pick up new records. This is an import window, not a retention limit for records already stored on your server.</p>
+
+    <h2>What goes to your server</h2>
+    <p>Uploads include permitted health values, units, record identifiers, timestamps, source app and device information, associated metadata, and supported workout summaries and events. Source information can include a device name. Relay also sends the invitation code during pairing and uses server-issued account identifiers and authentication tokens to connect and sync.</p>
+    <p>Connections use HTTPS. Your chosen server and its hosting provider receive network information such as your IP address. Their access, logging, security, retention and deletion practices are under their control. Choose a server you trust. Relay does not send a copy of your health records to its developer.</p>
+
+    <h2>What stays on your iPhone</h2>
+    <p>Relay stores connection tokens in the iOS Keychain. It stores the server address and preferences locally, along with sync checkpoints, counters, recorded deletion identifiers and any pending upload batch. Pending batches can contain health records and stay on your iPhone so interrupted uploads can resume.</p>
+    <p>Sync files use iOS file protection and are excluded from device backups. Connection tokens are marked for this device only. Relay contains no advertising, tracking or third-party analytics SDKs and does not sell health data or use it for advertising.</p>
+
+    <h2>Your controls and deletion</h2>
+    <p>You can change Relay’s read permissions in Apple Health. You can turn off automatic sync in Relay, or use Settings → Connection → Disconnect this iPhone to remove the saved connection tokens and stop uploads. Disconnecting retains local sync files for that server/account; it does not erase pending records or historical checkpoints.</p>
+    <p>To remove Relay’s local app files, delete the app from your iPhone rather than offloading it. Disconnect first to clear its Keychain tokens. These actions do not delete your original Apple Health records or records already uploaded to your server.</p>
+    <p>Deleting a record from Apple Health does not currently delete the corresponding record on Open Wearables. Use your server’s controls or contact its administrator to request server-side deletion. The developer cannot access or delete records on your server.</p>
+
+    <h2>Support and this website</h2>
+    <p>If you open a GitHub issue, your GitHub username and the information you provide are public and can be read by the developer to respond. Do not post health records, invitation codes, tokens or private server details. This policy page is hosted by GitHub Pages; GitHub processes website requests under its <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">privacy statement</a>. This page adds no analytics or tracking scripts.</p>
+
+    <h2>Contact</h2>
+    <p>For privacy questions or requests, contact Ben Selleslagh at <a href="mailto:privacyrequests.porridge616@passmail.net">privacyrequests.porridge616@passmail.net</a>. Information you choose to send is used to respond to your request. Please send only what is needed and do not include health records or connection secrets.</p>
+    <p>For general support, use the <a href="https://github.com/bselleslagh/relay/issues">Relay GitHub issue tracker</a>. Keep public requests free of personal health information.</p>
+
+    <h2>Changes</h2>
+    <p>This page will be updated when Relay’s data handling changes. The date above identifies the latest revision.</p>
+  </main>
+</body>
+</html>

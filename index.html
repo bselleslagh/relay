@@ -1,1 +1,93 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Relay</title></head><body><main><h1>Relay</h1><p>Your health data. Your server.</p><ul><li><a href="privacy.html">Privacy policy</a></li><li><a href="https://github.com/bselleslagh/relay">Source and setup instructions</a></li><li><a href="https://github.com/bselleslagh/relay/issues">Support</a></li></ul></main></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Connect Apple Health to your own Open Wearables server with Relay, then explore your data using an AI model you choose. A practical setup guide.">
+  <meta name="theme-color" content="#102d2c">
+  <title>Relay — Your health data. Your server. Your AI.</title>
+  <link rel="icon" href="assets/icon.png">
+  <link rel="stylesheet" href="styles.css">
+  <script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header"><a class="brand" href="#"><img src="assets/icon.png" width="36" height="36" alt=""><span>Relay</span></a><nav aria-label="Main navigation"><a href="#how-it-works">The idea</a><a href="#setup">Setup guide</a><a href="https://github.com/bselleslagh/relay">GitHub <span aria-hidden="true">↗</span></a></nav></header>
+<main id="main">
+<section class="hero wrap">
+  <div class="hero-copy"><p class="eyebrow"><span class="status-dot"></span> APPLE HEALTH, ON YOUR TERMS</p><h1>Your health data.<br>Your server.<br><span>Your AI.</span></h1><p class="intro">Give your health history a home you control. Relay moves the Apple Health records you choose to Open Wearables, ready to explore with your own AI tools.</p><div class="actions"><a class="button primary" href="#setup">Build your setup <span aria-hidden="true">↗</span></a><a class="text-link" href="#how-it-works">See how it works ↓</a></div><p class="fine">iPhone · iOS 26+ · Bring your own server</p></div>
+  <figure class="phone-figure"><div class="orbit-label">FROM YOUR IPHONE, TO YOUR SERVER</div><img class="phone" src="assets/relay-sync.png" width="506" height="1100" alt="Relay’s Sync screen, showing transfer status, server availability and a pixel athlete. Demo data."><figcaption>Actual Relay interface · sample data</figcaption></figure>
+</section>
+<section id="how-it-works" class="flow-section"><div class="wrap"><p class="eyebrow">ONE CONNECTION AT A TIME</p><h2>A bridge from health records<br>to better questions.</h2><p class="section-intro">Relay handles the iPhone side. Open Wearables stores the records. An MCP adapter lets an AI client look up the data it needs to answer you.</p>
+<ol class="flow"><li><span class="flow-icon" aria-hidden="true">♥</span><h3>Apple Health</h3><p>You choose which supported records Relay can read.</p><span class="flow-caption">YOUR IPHONE</span></li><li><img class="flow-icon" src="assets/icon.png" width="38" height="38" alt=""><h3>Relay</h3><p>Syncs those records directly to your server over HTTPS.</p><span class="flow-caption">YOUR CONNECTION</span></li><li><span class="flow-icon" aria-hidden="true">▤</span><h3>Open Wearables</h3><p>Stores your data and makes it available through an API.</p><span class="flow-caption">YOUR SERVER</span></li><li><span class="flow-icon" aria-hidden="true">✳</span><h3>Your AI + MCP</h3><p>Queries your server to help you explore your history.</p><span class="flow-caption">YOUR CHOICE OF MODEL</span></li></ol>
+<div class="privacy-note"><strong>You choose where the next step happens.</strong><p>Relay’s developer cannot access your synced health data. If you connect a cloud AI model, health data returned by its tools can be sent to that provider. For local inference, use a local model and client, and check their other integrations and logging settings.</p></div>
+</div></section>
+<section id="setup" class="wrap setup"><div class="section-heading"><div><p class="eyebrow">THE SETUP GUIDE</p><h2>Three steps. One personal system.</h2></div><span class="version-tag">Reference: Open Wearables 0.9.0</span></div><p class="section-intro">You’ll need an iPhone, a computer or server for Open Wearables, and a computer running an MCP-compatible AI client. The commands below use macOS/Linux shell syntax. This is a self-hosted setup: you manage hosting, updates and backups.</p>
+<div class="guide-layout"><aside class="guide-nav"><nav aria-label="Setup steps"><a href="#server"><span>01</span> Set up your server</a><a href="#relay"><span>02</span> Connect your iPhone</a><a href="#ai"><span>03</span> Connect your AI</a><a href="#first-question"><span>04</span> Ask your first question</a><a href="#troubleshooting"><span>?</span> Troubleshooting</a></nav><p>Already have a server?<br><a href="#relay">Skip to Relay →</a></p></aside>
+<div class="guide-content">
+<article id="server" class="step"><div class="step-label">01 / OPEN WEARABLES</div><h2>Give your data a home.</h2><p><a href="https://github.com/the-momentum/open-wearables">Open Wearables</a> is the separate, open-source platform that receives and stores your data. Relay’s current integration was reviewed against version 0.9.0; the examples here pin that version, rather than assuming a future release is compatible.</p>
+<h3>Try the platform on your computer</h3><p>Install <a href="https://docs.docker.com/get-started/get-docker/">Docker with Compose</a> and <a href="https://git-scm.com/downloads">Git</a>. Start Docker, then open a terminal:</p>
+<div class="code-block"><div class="code-title"><span>Terminal · initial setup</span><button type="button" data-copy="server-install">Copy</button></div><pre><code id="server-install">git clone --branch 0.9.0 --depth 1 https://github.com/the-momentum/open-wearables.git
+cd open-wearables
+cp backend/config/.env.example backend/config/.env
+cp frontend/.env.example frontend/.env</code></pre></div>
+<p>Before starting, edit <code>backend/config/.env</code>: set your <code>ADMIN_EMAIL</code>, a unique <code>ADMIN_PASSWORD</code>, and a random <code>SECRET_KEY</code>. You can generate a secret with <code>openssl rand -hex 32</code>. Keep these values private. The admin password is seeded on the first start; changing the file later does not reset an existing account.</p>
+<div class="code-block"><div class="code-title"><span>Terminal · start and check</span><button type="button" data-copy="server-start">Copy</button></div><pre><code id="server-start">docker compose up -d
+docker compose ps
+curl -fsS http://localhost:8000/openapi.json > /dev/null && echo "API ready"</code></pre></div>
+<p>Open <a href="http://localhost:3000">localhost:3000</a> on that computer and sign in with the admin details you chose. The developer portal runs on port 3000; the API runs on port 8000. Confirm the services are running before proceeding.</p>
+<aside class="callout"><h4>For real health data, deploy a protected server</h4><p>The repository’s Compose file is a development setup with default database credentials and exposed service ports. Use the <a href="https://openwearables.io/docs/deployment/docker">official production deployment guide</a> before syncing personal data: pin the backend and frontend images to an exact release, set production secrets, keep databases private, and configure backups and HTTPS.</p></aside>
+<h3>Make the API reachable from your iPhone</h3><p>Use an HTTPS address with a certificate trusted by iOS, such as <code>https://health.example.com</code>, routing to the API. Configure the portal’s API URL and allowed origins for your deployment. A private VPN is also an option if both devices can reach the server and HTTPS remains valid.</p><p><strong><code>localhost</code> on your iPhone means the iPhone itself.</strong> Use the server’s reachable API address in Relay, not the portal URL or a path ending in <code>/api/v1</code>. Keep any required port. Open the API’s <code>/docs</code> page in iPhone Safari to check networking and certificate trust.</p>
+<p class="source">Upstream reference: <a href="https://github.com/the-momentum/open-wearables/blob/0.9.0/README.md#getting-started">0.9.0 installation instructions</a> · <a href="https://openwearables.io/docs/deployment/docker">Production deployment</a></p>
+</article>
+<article id="relay" class="step"><div class="step-label">02 / RELAY</div><h2>Connect your iPhone.</h2><ol class="numbered"><li><strong>Install Relay.</strong> During the beta, install TestFlight and accept your Relay invitation. You need iOS 26 or later. Developers can also <a href="https://github.com/bselleslagh/relay#get-started">build Relay from source</a>.</li><li><strong>Create your Open Wearables user.</strong> In the developer portal, open <b>Users</b> and create or select your personal user. This health-data profile is separate from the administrator account.</li><li><strong>Generate an invitation code.</strong> On that user’s page, generate a one-time invitation code. In Relay, tap <b>Connect your server</b>, enter the HTTPS API address and the code, then tap <b>Connect securely</b>. Use the code while it is valid.</li><li><strong>Choose Apple Health access.</strong> Allow the categories you want to sync. Relay requests read access only. Your administrator password and server API key do not belong in Relay.</li><li><strong>Run your first sync.</strong> Keep Relay open, tap <b>Sync now</b>, and wait for the initial import. Then check that records appear under the correct user in Open Wearables.</li></ol>
+<div class="two-up"><div class="small-card"><h4>30 days to start</h4><p>The first import and manual rescans cover the last 30 days. Later syncs pick up new records. Older records already on the server stay there.</p></div><div class="small-card"><h4>Background, when iOS allows</h4><p>Automatic sync depends on iOS scheduling and connectivity. It is not a continuous, real-time feed. Use Sync now when you need a fresh reading.</p></div></div>
+<p class="quiet">Relay does not export every HealthKit type. Deleting a record in Apple Health does not currently delete its server copy. See <a href="https://github.com/bselleslagh/relay/blob/main/docs/COVERAGE.md">coverage and limitations</a> and the <a href="privacy.html">privacy policy</a>.</p>
+</article>
+<article id="ai" class="step"><div class="step-label">03 / YOUR AI CLIENT</div><h2>Put your model in the loop.</h2><p>MCP is a standard way for an AI client to call tools. Open Wearables supplies tools for looking up users, activity, sleep, workouts and individual measurements. The model runs in your chosen client; it does not run inside Relay.</p>
+<h3>Install the official MCP adapter</h3><p>On the computer running your AI client, install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> (0.9.17 or newer) and Git. Then:</p>
+<div class="code-block"><div class="code-title"><span>Terminal · on your AI computer</span><button type="button" data-copy="mcp-install">Copy</button></div><pre><code id="mcp-install">git clone --branch 0.9.0 --depth 1 https://github.com/the-momentum/open-wearables.git open-wearables-agent
+uv sync --frozen --project open-wearables-agent/mcp
+cd open-wearables-agent/mcp
+pwd
+command -v uv</code></pre></div>
+<p>Save the two paths printed at the end. In the Open Wearables portal, create an API key under <b>Settings → Credentials</b>. Keep it in your AI client’s private configuration, never in a chat prompt or public repository.</p>
+<aside class="callout"><h4>Two different credentials</h4><p>Relay uses a one-time pairing code and user-scoped tokens. The MCP adapter uses a server API key. In Open Wearables 0.9.0, general API keys have broader access than one user or read-only queries. Use a server containing only data you intend this client to access; a prompt asking for one user is not an access-control boundary.</p></aside>
+<h3>Choose where your model runs</h3><div class="two-up"><div class="small-card"><span class="pill">LOCAL MODEL</span><h4>LM Studio</h4><p>Download and load a model suited to tool use and your computer’s memory. Open <b>Program → Install → Edit mcp.json</b> and add the configuration below. Enable the server’s tools for your chat.</p><a href="https://lmstudio.ai/docs/app/mcp">LM Studio MCP guide ↗</a></div><div class="small-card"><span class="pill">YOUR PREFERRED CLIENT</span><h4>Another MCP host</h4><p>Use a client that supports local <b>stdio</b> MCP servers, such as Claude Desktop or Cursor. Choose your model in that client. Client subscriptions, provider keys and model support are separate from Relay.</p><a href="https://github.com/the-momentum/open-wearables/blob/0.9.0/mcp/README.md">Official client examples ↗</a></div></div>
+<h3>Add this MCP configuration</h3><p>Replace the command path, adapter directory, API address and API key. Merge the <code>open-wearables</code> entry into your existing <code>mcpServers</code> object if you already have other servers configured.</p>
+<div class="code-block"><div class="code-title"><span>mcp.json · replace the placeholders</span><button type="button" data-copy="mcp-json">Copy</button></div><pre><code id="mcp-json">{
+  "mcpServers": {
+    "open-wearables": {
+      "command": "/ABSOLUTE/PATH/TO/uv",
+      "args": [
+        "run", "--frozen", "--directory",
+        "/ABSOLUTE/PATH/open-wearables-agent/mcp", "start"
+      ],
+      "env": {
+        "OPEN_WEARABLES_API_URL": "https://health.example.com",
+        "OPEN_WEARABLES_API_KEY": "YOUR_OPEN_WEARABLES_API_KEY",
+        "LOG_LEVEL": "WARNING"
+      }
+    }
+  }
+}</code></pre></div>
+<p>Reload the MCP server or restart the client, then inspect its tools. You should see <code>get_users</code>, <code>get_activity_summary</code>, <code>get_sleep_summary</code>, <code>get_workout_events</code> and <code>get_timeseries</code>.</p><p><strong>The API URL is not an HTTP MCP endpoint.</strong> This adapter is a local process launched by the client, and it calls your remote server’s REST API. An AI client that accepts only remote MCP URLs cannot use this configuration directly.</p>
+</article>
+<article id="first-question" class="step"><div class="step-label">04 / MAKE IT USEFUL</div><h2>Start with one small question.</h2><p>First ask the client to list users with <code>get_users</code> and confirm your user ID. Then try a short, explicit time range:</p><div class="prompt-card"><span class="eyebrow">TRY ASKING</span><blockquote id="sample-prompt">For my selected user ID, compare my sleep duration over the last 7 complete days. Use the Open Wearables tools. Show dates, timezone, units and source coverage. Tell me which days are missing, and don’t treat missing records as zero.</blockquote><button type="button" data-copy="sample-prompt">Copy prompt</button></div>
+<p>Compare the answer with a few records in the portal. Ask for descriptive patterns before broad conclusions. Tool results can be incomplete; check date ranges, pagination and overlapping device sources. The 0.9.0 adapter has query limits, so split large requests into smaller periods.</p><p class="quiet">This setup helps you explore personal records. Model-generated observations can be wrong and are not a diagnosis.</p>
+</article>
+<article id="troubleshooting" class="step"><div class="step-label">WHEN SOMETHING DOESN’T CONNECT</div><h2>A few things to check.</h2>
+<details><summary>Relay cannot reach my server</summary><p>Check the API address in iPhone Safari, HTTPS certificate trust, VPN connectivity and the reverse proxy. A portal on port 3000 is not the API on port 8000. Do not use your computer’s localhost address on the phone.</p></details>
+<details><summary>The invitation code fails</summary><p>Generate a fresh code for the intended user. Codes are single-use and expire. Enter the invitation code in Relay, not an administrator password or MCP API key.</p></details>
+<details><summary>The sync succeeds, but data is missing</summary><p>Check the correct user, supported data types, Health permissions and the 30-day import window. iOS does not tell Relay which read permissions you denied. After changing access in Health, use Relay’s Settings → History → Rescan last 30 days.</p></details>
+<details><summary>My AI client cannot start the MCP server</summary><p>Use absolute paths for uv and the MCP directory. Check that uv is installed for the same OS/user as the client, dependencies installed successfully, and the client supports stdio MCP. Read its MCP logs for startup errors.</p></details>
+<details><summary>The tools return an authentication error or no records</summary><p>Use a valid Open Wearables API key, the API base URL without /api/v1, and a network route from the AI computer to the server. Confirm the user ID, date range and completed phone sync. An AI provider’s API key cannot authenticate to Open Wearables.</p></details>
+<details><summary>My model answers without fetching data</summary><p>Enable the MCP tools in the chat and choose a model that handles tool calls. Ask it to call get_users explicitly and inspect the tool result. If the model cannot use tools reliably, switch models instead of trusting invented health summaries.</p></details>
+</article>
+</div></div></section>
+<section class="closing wrap"><div><p class="eyebrow">READY WHEN YOU ARE</p><h2>Keep the data close.<br>Let your questions go further.</h2></div><a class="button primary" href="https://github.com/bselleslagh/relay">Explore Relay on GitHub ↗</a></section>
+</main>
+<footer class="wrap"><a class="brand" href="#"><img src="assets/icon.png" width="28" height="28" alt="">Relay</a><p>By Ben Selleslagh · Independent of Open Wearables.<br>Guide checked October 2, 2026. Configuration examples are reference instructions, not a verified deployment on your hardware.</p><nav aria-label="Footer"><a href="privacy.html">Privacy</a><a href="https://github.com/bselleslagh/relay/issues">Support</a><a href="https://openwearables.io/docs">Open Wearables docs</a></nav></footer>
+<div class="sr-only" role="status" id="copy-status" aria-live="polite"></div>
+</body>
+</html>

@@ -1,4 +1,4 @@
-"""HTTP API for the Relay iPhone app: pairing, the write queue and nutrition uploads."""
+"""HTTP API for the Relay iPhone app: pairing, the write queue and Apple Health uploads."""
 
 from __future__ import annotations
 
@@ -12,11 +12,11 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from . import nutrition
+from . import ingest
 from .config import Settings
 from .store import AckResult, ConflictError, NotFoundError, RateLimitedError, Store
 
-MAX_BODY_BYTES = 4 * 1024 * 1024
+MAX_BODY_BYTES = 8 * 1024 * 1024
 SUPPORTED_KINDS = frozenset({"meal"})
 
 Handler = Callable[[Request, dict[str, Any]], Awaitable[Response]]
@@ -155,26 +155,39 @@ def register_device_routes(mcp: FastMCP, store: Store, settings: Settings) -> No
             return error(409, str(exc))
         return JSONResponse({"id": entry["id"], "status": entry["status"]})
 
+    async def register_types(request: Request, device: dict[str, Any]) -> Response:
+        try:
+            types, rejected = ingest.parse_types(await read_json(request))
+        except ingest.InvalidBatchError as exc:
+            return error(422, str(exc))
+        await run_in_threadpool(store.register_types, types)
+        return JSONResponse({"registered": len(types), "rejected": rejected})
+
     async def upload(request: Request, device: dict[str, Any]) -> Response:
         body = await read_json(request)
+        registry = await run_in_threadpool(store.types)
         try:
-            batch_id, samples, meals, deleted, rejected = nutrition.parse_batch(body, settings.zone)
-        except nutrition.InvalidBatchError as exc:
+            batch = ingest.parse_batch(body, settings.zone, registry)
+        except ingest.InvalidBatchError as exc:
             return error(422, str(exc))
         accepted = await run_in_threadpool(
-            lambda: store.ingest_nutrition(
+            lambda: store.ingest(
                 device_id=device["id"],
-                batch_id=batch_id,
-                samples=samples,
-                meals=meals,
-                deleted=deleted,
-                rejected=len(rejected),
-                complete=body.get("complete") is True,
+                batch_id=batch.batch_id,
+                records=batch.records,
+                deleted=batch.deleted,
+                daily=batch.daily,
+                rejected=len(batch.rejected),
+                complete=batch.complete,
             )
         )
-        return JSONResponse({"batch_id": batch_id, "accepted": accepted, "rejected": rejected})
+        deleted_days = accepted.pop("deleted_days")
+        return JSONResponse(
+            {"batch_id": batch.batch_id, "accepted": accepted, "rejected": batch.rejected, "deleted_days": deleted_days}
+        )
 
     mcp.custom_route("/v1/device", methods=["GET"])(authenticated(device_status))
     mcp.custom_route("/v1/writes/pull", methods=["POST"])(authenticated(pull))
     mcp.custom_route("/v1/writes/{write_id}/ack", methods=["POST"])(authenticated(ack))
-    mcp.custom_route("/v1/nutrition", methods=["POST"])(authenticated(upload))
+    mcp.custom_route("/v1/types", methods=["POST"])(authenticated(register_types))
+    mcp.custom_route("/v1/health", methods=["POST"])(authenticated(upload))

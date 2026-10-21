@@ -1,4 +1,4 @@
-"""MCP tools: queue Apple Health writes and read the nutrition Relay uploaded."""
+"""MCP tools: read the Apple Health data Relay uploaded, and queue Apple Health writes."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from fastmcp.server.auth import AccessToken, TokenVerifier
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from . import meals, nutrition
+from . import meals, nutrition, summaries
 from .config import Settings
 from .store import ACTIONABLE, ConflictError, NotFoundError, Store, WriteStatus
 
@@ -29,19 +29,22 @@ STATUS_MEANING = {
 MAX_RANGE_DAYS = 92
 
 INSTRUCTIONS = """\
-Relay Hub connects you to the user's Apple Health nutrition through the Relay iPhone app.
+Relay Hub holds the user's Apple Health data, uploaded by the Relay iPhone app, and lets you log meals back into
+Apple Health.
 
-Writing: log_meal queues an entry. Relay saves it to Apple Health on its next sync, usually within minutes while
-the app is open; otherwise when iOS grants background time. Use one log_meal call per meal or portion, with totals
-for the whole portion. Confirm uncertain portions with the user instead of guessing. Give consumed_at in the user's
-local time with its UTC offset. After a timeout or error, call list_recent before logging again, or reuse the same
-idempotency_key, so nothing is logged twice. To correct an entry, cancel_entry it and log a new one.
+Reading: start with list_data_types to see what exists and how fresh it is. get_daily_summary returns HealthKit's own
+daily statistics: sums for cumulative types such as steps and active energy, average/min/max for the rest. They merge
+overlapping sources such as iPhone and Apple Watch, so prefer them over adding raw samples yourself. get_samples
+returns raw readings (for example weight, heart rate variability or blood pressure). get_sleep summarises each night
+and get_workouts lists workouts. get_nutrition_totals and list_food_log cover food and drink. Check synced_at (when
+Relay last finished uploading) before you call data current, keep units, and distinguish missing data from zero.
 
-Reading: get_nutrition_totals and list_food_log return what Relay uploaded from Apple Health. This includes every app
-that writes nutrition and entries this hub already wrote. Entries Relay has not yet saved and uploaded are not in the
-totals: get_nutrition_totals lists them in not_in_totals_yet, and removals still to happen in removal_pending. Check
-nutrition_synced_at (when Relay last finished uploading) before you call the data current, and distinguish days with
-no data from zero intake.
+Writing: log_meal queues an entry. Relay saves it to Apple Health on its next sync, usually within minutes while the
+app is open; otherwise when iOS grants background time. Use one log_meal call per meal or portion, with totals for
+the whole portion. Confirm uncertain portions with the user instead of guessing. Give consumed_at in the user's local
+time with its UTC offset. After a timeout or error, call list_recent before logging again, or reuse the same
+idempotency_key, so nothing is logged twice. To correct an entry, cancel_entry it and log a new one. Entries Relay has
+not yet saved and uploaded are listed in get_nutrition_totals as not_in_totals_yet.
 """
 
 
@@ -206,23 +209,25 @@ def build_mcp(store: Store, settings: Settings, *, auth: bool = True) -> FastMCP
             for entry in store.list_writes(statuses=statuses, limit=500)
             if entry["kind"] == "meal" and start <= datetime.fromisoformat(entry["data"]["consumed_at"]).date() <= end
         ]
-        uploaded = store.uploaded_write_ids([entry["id"] for entry in entries])
+        ids = [entry["id"] for entry in entries]
+        # Ever uploaded: a meal later deleted in Apple Health must not be suggested as missing.
+        ever, live = store.uploaded_write_ids(ids, live=False), store.uploaded_write_ids(ids)
         return {
             "time_zone": settings.timezone,
             "units": nutrition.UNITS,
-            "nutrition_synced_at": store.last_nutrition_upload(),
-            "days": nutrition.daily_totals(store.nutrition_samples(start, end), start, end),
+            "synced_at": store.last_upload(),
+            "days": nutrition.daily_totals(nutrition.samples(store, start, end), start, end),
             # Queued, or saved to Apple Health but not uploaded back yet: add these for an up-to-the-minute estimate.
             "not_in_totals_yet": [
                 present(entry)
                 for entry in entries
-                if entry["status"] != WriteStatus.delete_requested and entry["id"] not in uploaded
+                if entry["status"] != WriteStatus.delete_requested and entry["id"] not in ever
             ],
             # Cancelled after delivery: still counted until Relay removes them and uploads the deletion.
             "removal_pending": [
                 present(entry)
                 for entry in entries
-                if entry["status"] == WriteStatus.delete_requested and entry["id"] in uploaded
+                if entry["status"] == WriteStatus.delete_requested and entry["id"] in live
             ],
         }
 
@@ -235,17 +240,19 @@ def build_mcp(store: Store, settings: Settings, *, auth: bool = True) -> FastMCP
         """What was eaten, newest first: Apple Health food entries with their nutrients and source app."""
         end = end_date or today()
         start, end = date_range(start_date or end, end, 1)
-        entries = nutrition.food_log(store.nutrition_samples(start, end), store.nutrition_meals(start, end), limit)
-        return {"units": nutrition.UNITS, "nutrition_synced_at": store.last_nutrition_upload(), "entries": entries}
+        entries = nutrition.food_log(
+            nutrition.samples(store, start, end), nutrition.food_entries(store, start, end), limit
+        )
+        return {"units": nutrition.UNITS, "synced_at": store.last_upload(), "entries": entries}
 
     @mcp.tool(annotations=ToolAnnotations(title="Sync status", readOnlyHint=True, openWorldHint=False))
     def get_sync_status() -> dict[str, Any]:
-        """When each paired iPhone last synced, whether it may write nutrition to Apple Health, and queue counts."""
+        """When each paired iPhone last synced, whether it may write meals to Apple Health, and queue counts."""
         devices = [
             {
                 "name": device["name"],
                 "last_pull_at": device["last_pull_at"],
-                "nutrition_synced_at": device["last_upload_at"],
+                "synced_at": device["last_upload_at"],
                 "write_access": device["write_access"],
                 "app_version": device["app_version"],
             }
@@ -256,7 +263,97 @@ def build_mcp(store: Store, settings: Settings, *, auth: bool = True) -> FastMCP
             "time_zone": settings.timezone,
             "devices": devices,
             "queue": store.queue_counts(),
-            "nutrition_synced_at": store.last_nutrition_upload(),
+            "synced_at": store.last_upload(),
         }
+
+    def resolve(name: str) -> dict[str, Any]:
+        entry = summaries.resolve(store, name)
+        if entry is None:
+            raise ToolError(f"Unknown data type {name!r}. Call list_data_types for the available types.")
+        return entry
+
+    @mcp.tool(annotations=ToolAnnotations(title="Available data types", readOnlyHint=True, openWorldHint=False))
+    def list_data_types() -> dict[str, Any]:
+        """Every Apple Health type with uploaded data: key, unit, record count, first and last record, and freshness."""
+        return {"time_zone": settings.timezone, "synced_at": store.last_upload(), "types": summaries.data_types(store)}
+
+    @mcp.tool(annotations=ToolAnnotations(title="Daily summary", readOnlyHint=True, openWorldHint=False))
+    def get_daily_summary(
+        types: Annotated[
+            list[str] | None,
+            Field(
+                description="Type keys or identifiers from list_data_types, e.g. ['step_count', 'resting_heart_rate']. "
+                "Default: every type with daily statistics."
+            ),
+        ] = None,
+        start_date: Annotated[
+            date | None, Field(description="First local day, YYYY-MM-DD. Default: 6 days ago.")
+        ] = None,
+        end_date: Annotated[date | None, Field(description="Last local day, YYYY-MM-DD. Default: today.")] = None,
+    ) -> dict[str, Any]:
+        """HealthKit daily statistics per day: sum for cumulative types, average/min/max for others."""
+        start, end = date_range(start_date, end_date, 7)
+        entries = [resolve(name) for name in types] if types else None
+        type_ids = [entry["id"] for entry in entries] if entries is not None else None
+        units = {summaries.key(entry["id"]): entry["unit"] for entry in store.types().values() if entry["unit"]}
+        days = summaries.daily_summary(store, start, end, type_ids)
+        present_keys = {name for day in days for name in day["values"]}
+        return {
+            "time_zone": settings.timezone,
+            "synced_at": store.last_upload(),
+            "units": {name: unit for name, unit in sorted(units.items()) if name in present_keys},
+            "days": days,
+        }
+
+    @mcp.tool(annotations=ToolAnnotations(title="Raw samples", readOnlyHint=True, openWorldHint=False))
+    def get_samples(
+        type: Annotated[str, Field(description="Type key or identifier from list_data_types, e.g. 'body_mass'.")],
+        start_date: Annotated[
+            date | None, Field(description="First local day, YYYY-MM-DD. Default: 6 days ago.")
+        ] = None,
+        end_date: Annotated[date | None, Field(description="Last local day, YYYY-MM-DD. Default: today.")] = None,
+        limit: Annotated[int, Field(ge=1, le=5_000)] = 500,
+    ) -> dict[str, Any]:
+        """Raw readings for one type, newest first, in local time with their source app or device."""
+        entry = resolve(type)
+        if entry["kind"] in ("workout", "correlation"):
+            raise ToolError("Use get_workouts for workouts and list_food_log for food entries.")
+        start, end = date_range(start_date, end_date, 7)
+        samples, truncated = summaries.raw_samples(store, entry, start, end, limit)
+        return {
+            "type": summaries.key(entry["id"]),
+            "unit": entry["unit"],
+            "samples": samples,
+            "truncated": truncated,
+            "synced_at": store.last_upload(),
+        }
+
+    @mcp.tool(annotations=ToolAnnotations(title="Sleep", readOnlyHint=True, openWorldHint=False))
+    def get_sleep(
+        start_date: Annotated[
+            date | None, Field(description="First night (wake-up day), YYYY-MM-DD. Default: 6 days ago.")
+        ] = None,
+        end_date: Annotated[
+            date | None, Field(description="Last night (wake-up day), YYYY-MM-DD. Default: today.")
+        ] = None,
+    ) -> dict[str, Any]:
+        """One summary per night: bedtime, wake time, minutes asleep, in bed, awake and per sleep stage."""
+        start, end = date_range(start_date, end_date, 7)
+        return {"synced_at": store.last_upload(), "nights": summaries.sleep_nights(store, start, end)}
+
+    @mcp.tool(annotations=ToolAnnotations(title="Workouts", readOnlyHint=True, openWorldHint=False))
+    def get_workouts(
+        start_date: Annotated[
+            date | None, Field(description="First local day, YYYY-MM-DD. Default: 29 days ago.")
+        ] = None,
+        end_date: Annotated[date | None, Field(description="Last local day, YYYY-MM-DD. Default: today.")] = None,
+        activity: Annotated[
+            str | None, Field(description="Optional activity filter, e.g. 'running' or 'cycling'.")
+        ] = None,
+        limit: Annotated[int, Field(ge=1, le=500)] = 100,
+    ) -> dict[str, Any]:
+        """Workouts newest first, with duration, energy, distance and heart rate."""
+        start, end = date_range(start_date, end_date, 30)
+        return {"synced_at": store.last_upload(), "workouts": summaries.workouts(store, start, end, activity, limit)}
 
     return mcp

@@ -73,16 +73,38 @@ def test_nutrition_upload_reports_accepted_and_rejected(client: TestClient, stor
         "start": "2026-10-21T10:00:00Z",
         "end": "2026-10-21T10:00:00Z",
     }
-    body = {"batch_id": "b1", "samples": [sample, sample | {"unit": "kJ"}], "meals": [], "deleted": []}
-    response = client.post("/v1/nutrition", json=body, headers=bearer(device_token))
+    body = {"batch_id": "b1", "quantities": [sample, sample | {"unit": "kJ"}], "meals": [], "deleted": []}
+    response = client.post("/v1/health", json=body, headers=bearer(device_token))
     assert response.status_code == 200
-    assert response.json()["accepted"] == {"samples": 1, "meals": 0, "deleted": 0}
+    accepted = response.json()["accepted"]
+    assert accepted["quantities"] == 1 and accepted["rejected"] == 1
     assert len(response.json()["rejected"]) == 1
-    assert client.post("/v1/nutrition", json={"samples": []}, headers=bearer(device_token)).status_code == 422
-    caught_up = client.post("/v1/nutrition", json={"batch_id": "b2", "complete": True}, headers=bearer(device_token))
-    assert caught_up.status_code == 200 and store.last_nutrition_upload() is not None
-    huge = b'{"batch_id": "b", "pad": "' + b"x" * (4 * 1024 * 1024) + b'"}'
-    assert client.post("/v1/nutrition", content=huge, headers=bearer(device_token)).status_code == 400
+    assert client.post("/v1/health", json={"quantities": []}, headers=bearer(device_token)).status_code == 422
+    caught_up = client.post("/v1/health", json={"batch_id": "b2", "complete": True}, headers=bearer(device_token))
+    assert caught_up.status_code == 200 and store.last_upload() is not None
+    huge = b'{"batch_id": "b", "pad": "' + b"x" * (8 * 1024 * 1024) + b'"}'
+    assert client.post("/v1/health", content=huge, headers=bearer(device_token)).status_code == 400
+
+
+def test_types_are_registered_before_their_samples(client: TestClient, store: Store, device_token: str) -> None:
+    types = {
+        "types": [
+            {
+                "id": "HKQuantityTypeIdentifierVO2Max",
+                "kind": "quantity",
+                "title": "VO2 Max",
+                "group": "vitals",
+                "unit": "ml/kg*min",
+                "aggregation": "discrete",
+            },
+            {"id": "not a type", "kind": "quantity", "title": "x", "group": "x"},
+        ]
+    }
+    response = client.post("/v1/types", json=types, headers=bearer(device_token))
+    assert response.json()["registered"] == 1 and len(response.json()["rejected"]) == 1
+    assert store.types()["HKQuantityTypeIdentifierVO2Max"]["unit"] == "ml/kg*min"
+    assert client.post("/v1/types", json={"types": "x"}, headers=bearer(device_token)).status_code == 422
+    assert client.post("/v1/types", json=types).status_code == 401
 
 
 def test_mcp_endpoint_requires_the_mcp_token(client: TestClient, device_token: str) -> None:
@@ -101,6 +123,11 @@ def test_mcp_endpoint_requires_the_mcp_token(client: TestClient, device_token: s
         "get_nutrition_totals",
         "list_food_log",
         "get_sync_status",
+        "list_data_types",
+        "get_daily_summary",
+        "get_samples",
+        "get_sleep",
+        "get_workouts",
     }
 
 

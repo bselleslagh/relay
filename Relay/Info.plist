@@ -24,11 +24,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Relay reads the health records you choose and sends them to your own servers: Open Wearables, and Relay Hub for nutrition if you pair it.</string>
+	<string>Relay reads the health records you choose and sends them to your own Relay Hub, so you and your assistant can explore your health history.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>If you pair Relay Hub, Relay saves the meals your AI assistant queues there to Apple Health as nutrition entries. It writes nothing else.</string>
+	<string>Relay saves the meals your AI assistant logs in your Relay Hub to Apple Health as nutrition entries. It writes nothing else.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Relay connects to your private Open Wearables server over your network.</string>
+	<string>Relay connects to your private Relay Hub over your network.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

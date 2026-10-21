@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 from .nutrients import BY_KEY, MEAL_TYPES, WRITABLE_KEYS
 
 MAX_FUTURE = timedelta(minutes=15)
-# Relay uploads Apple Health nutrition from 30 days before its first sync, so older entries would never return.
+# Relay's shortest import window is 30 days, so older entries might never be uploaded back.
 MAX_PAST = timedelta(days=30)
 NAME_LENGTH = 120
 LIMITS = {

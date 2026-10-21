@@ -170,6 +170,21 @@ def test_pull_only_returns_kinds_the_app_supports(store: Store) -> None:
     assert store.list_devices()[0]["write_access"] == {"meal": "authorized"}
 
 
+def test_preview_database_keeps_pairing_and_gains_health_tables(tmp_path) -> None:
+    path = tmp_path / "preview.sqlite3"
+    connection = sqlite3.connect(path)
+    from relay_hub.store import SCHEMA
+
+    connection.executescript(f"{SCHEMA} CREATE TABLE nutrition_samples (uuid TEXT); PRAGMA user_version = 1;")
+    connection.execute("INSERT INTO devices (id, name, token_hash, created_at) VALUES ('d', 'iPhone', 'h', 'now')")
+    connection.commit()
+    connection.close()
+    store = Store(path)
+    assert [device["id"] for device in store.list_devices()] == ["d"]
+    assert store.types() == {}
+    assert not store.query("SELECT name FROM sqlite_master WHERE name = 'nutrition_samples'")
+
+
 def test_database_from_a_newer_version_is_refused(store: Store) -> None:
     connection = sqlite3.connect(store.path)
     connection.execute("PRAGMA user_version = 99")

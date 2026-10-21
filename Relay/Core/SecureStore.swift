@@ -9,8 +9,10 @@ protocol CredentialStore {
 }
 
 struct KeychainStore: CredentialStore {
-    private let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
-        kSecAttrService as String: AppIdentity.bundleID, kSecAttrAccount as String: "connection"]
+    private static func query(_ account: String) -> [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: AppIdentity.bundleID, kSecAttrAccount as String: account]
+    }
+    private let query = Self.query("relay-hub")
     func read() throws -> Credentials? {
         var q = query; q[kSecReturnData as String] = true; q[kSecMatchLimit as String] = kSecMatchLimitOne
         var item: CFTypeRef?
@@ -33,19 +35,35 @@ struct KeychainStore: CredentialStore {
         let status = SecItemDelete(query as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else { throw RelayError.storage }
     }
+    /// Earlier versions stored Open Wearables tokens under "connection". They are no longer used.
+    static func removeLegacyConnection() {
+        SecItemDelete(query("connection") as CFDictionary)
+    }
 }
 
 final class SyncStore {
     private let file: URL
     init(account: Credentials, directory: URL? = nil) throws {
-        let hash = SHA256.hash(data: Data((account.server.url.absoluteString + "/" + account.userID).utf8))
+        let hash = SHA256.hash(data: Data((account.server.url.absoluteString + "/" + account.deviceID).utf8))
             .map { String(format: "%02x", $0) }.joined()
-        var directory = directory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let directory = try Self.directory(directory)
+        file = directory.appendingPathComponent("sync-" + hash + ".json")
+    }
+    private static func directory(_ override: URL?) throws -> URL {
+        var directory = override ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Relay", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         var values = URLResourceValues(); values.isExcludedFromBackup = true
         try directory.setResourceValues(values)
-        file = directory.appendingPathComponent(hash + ".json")
+        return directory
+    }
+    /// Checkpoints from earlier versions could hold unsent health records for another server; they are deleted.
+    static func removeLegacyCheckpoints(directory: URL? = nil) {
+        guard let directory = try? Self.directory(directory),
+              let files = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else { return }
+        for file in files where file.pathExtension == "json" && !file.lastPathComponent.hasPrefix("sync-") {
+            try? FileManager.default.removeItem(at: file)
+        }
     }
     func load() throws -> SyncState {
         guard FileManager.default.fileExists(atPath: file.path) else { return SyncState() }

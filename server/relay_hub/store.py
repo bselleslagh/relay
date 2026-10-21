@@ -1,4 +1,4 @@
-"""SQLite persistence for paired devices, the Apple Health write queue and uploaded nutrition."""
+"""SQLite persistence for paired devices, the Apple Health write queue and uploaded health data."""
 
 from __future__ import annotations
 
@@ -9,13 +9,12 @@ import sqlite3
 import uuid
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import contextmanager
-from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 SCHEMA = """
 CREATE TABLE devices (
     id TEXT PRIMARY KEY,
@@ -56,25 +55,82 @@ CREATE TABLE writes (
     healthkit_ids TEXT
 );
 CREATE INDEX writes_by_status ON writes (status, created_at);
-CREATE TABLE nutrition_samples (
+"""
+HEALTH_SCHEMA = """
+CREATE TABLE types (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL,
+    group_name TEXT NOT NULL,
+    unit TEXT,
+    aggregation TEXT,
+    updated_at TEXT NOT NULL
+);
+CREATE TABLE samples (
     uuid TEXT PRIMARY KEY,
-    nutrient TEXT NOT NULL,
+    type TEXT NOT NULL,
     value REAL NOT NULL,
+    unit TEXT NOT NULL,
     start_at TEXT NOT NULL,
     end_at TEXT NOT NULL,
     utc_offset TEXT NOT NULL,
     local_date TEXT NOT NULL,
     source_name TEXT,
     source_bundle_id TEXT,
+    device_name TEXT,
     food_name TEXT,
     meal_type TEXT,
     write_id TEXT,
+    metadata TEXT,
     device_id TEXT NOT NULL,
     received_at TEXT NOT NULL,
     deleted_at TEXT
 );
-CREATE INDEX nutrition_samples_by_day ON nutrition_samples (local_date, nutrient);
-CREATE TABLE nutrition_meals (
+CREATE INDEX samples_by_type_time ON samples (type, start_at);
+CREATE INDEX samples_by_day ON samples (local_date, type);
+CREATE INDEX samples_by_write ON samples (write_id) WHERE write_id IS NOT NULL;
+CREATE TABLE categories (
+    uuid TEXT PRIMARY KEY,
+    type TEXT NOT NULL,
+    value INTEGER NOT NULL,
+    label TEXT,
+    start_at TEXT NOT NULL,
+    end_at TEXT NOT NULL,
+    utc_offset TEXT NOT NULL,
+    local_date TEXT NOT NULL,
+    source_name TEXT,
+    source_bundle_id TEXT,
+    device_name TEXT,
+    metadata TEXT,
+    device_id TEXT NOT NULL,
+    received_at TEXT NOT NULL,
+    deleted_at TEXT
+);
+CREATE INDEX categories_by_type_time ON categories (type, end_at);
+CREATE TABLE workouts (
+    uuid TEXT PRIMARY KEY,
+    activity TEXT NOT NULL,
+    start_at TEXT NOT NULL,
+    end_at TEXT NOT NULL,
+    utc_offset TEXT NOT NULL,
+    local_date TEXT NOT NULL,
+    duration_s REAL NOT NULL,
+    energy_kcal REAL,
+    distance_m REAL,
+    avg_heart_rate REAL,
+    min_heart_rate REAL,
+    max_heart_rate REAL,
+    source_name TEXT,
+    source_bundle_id TEXT,
+    device_name TEXT,
+    metadata TEXT,
+    events TEXT,
+    device_id TEXT NOT NULL,
+    received_at TEXT NOT NULL,
+    deleted_at TEXT
+);
+CREATE INDEX workouts_by_time ON workouts (start_at);
+CREATE TABLE food_entries (
     uuid TEXT PRIMARY KEY,
     start_at TEXT NOT NULL,
     end_at TEXT NOT NULL,
@@ -90,15 +146,25 @@ CREATE TABLE nutrition_meals (
     received_at TEXT NOT NULL,
     deleted_at TEXT
 );
-CREATE INDEX nutrition_meals_by_day ON nutrition_meals (local_date);
-CREATE TABLE nutrition_uploads (
+CREATE INDEX food_entries_by_day ON food_entries (local_date);
+-- Daily statistics computed by HealthKit, which merges overlapping sources (for example iPhone and Watch steps).
+CREATE TABLE daily_stats (
+    type TEXT NOT NULL,
+    date TEXT NOT NULL,
+    sum REAL,
+    average REAL,
+    minimum REAL,
+    maximum REAL,
+    time_zone TEXT,
+    device_id TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (type, date)
+);
+CREATE TABLE uploads (
     batch_id TEXT PRIMARY KEY,
     device_id TEXT NOT NULL,
     received_at TEXT NOT NULL,
-    samples INTEGER NOT NULL,
-    meals INTEGER NOT NULL,
-    deleted INTEGER NOT NULL,
-    rejected INTEGER NOT NULL
+    counts TEXT NOT NULL
 );
 """
 
@@ -141,6 +207,10 @@ TRANSITIONS: dict[tuple[WriteStatus, AckResult], WriteStatus] = {
 }
 
 
+# Upload collections and the tables they land in. Every row is keyed by its HealthKit UUID.
+TABLES = {"quantities": "samples", "categories": "categories", "workouts": "workouts", "meals": "food_entries"}
+
+
 class NotFoundError(LookupError):
     pass
 
@@ -168,37 +238,6 @@ def hash_secret(value: str) -> str:
 
 def normalize_code(code: str) -> str:
     return "".join(character for character in code.upper() if character not in " -")
-
-
-@dataclass(frozen=True)
-class SampleRow:
-    uuid: str
-    nutrient: str
-    value: float
-    start_at: str
-    end_at: str
-    utc_offset: str
-    local_date: str
-    source_name: str | None
-    source_bundle_id: str | None
-    food_name: str | None
-    meal_type: str | None
-    write_id: str | None
-
-
-@dataclass(frozen=True)
-class MealRow:
-    uuid: str
-    start_at: str
-    end_at: str
-    utc_offset: str
-    local_date: str
-    food_name: str | None
-    meal_type: str | None
-    write_id: str | None
-    source_name: str | None
-    source_bundle_id: str | None
-    sample_uuids: tuple[str, ...]
 
 
 class Store:
@@ -233,7 +272,16 @@ class Store:
             if version > SCHEMA_VERSION:
                 raise RuntimeError(f"Database schema {version} is newer than this Relay Hub ({SCHEMA_VERSION})")
             if version == 0:
-                connection.executescript(f"BEGIN; {SCHEMA} PRAGMA user_version = {SCHEMA_VERSION}; COMMIT;")
+                connection.executescript(
+                    f"BEGIN; {SCHEMA} {HEALTH_SCHEMA} PRAGMA user_version = {SCHEMA_VERSION}; COMMIT;"
+                )
+            elif version == 1:
+                # A preview stored nutrition only. Pairing and the write queue are kept; health data re-uploads.
+                connection.executescript(
+                    "BEGIN; DROP TABLE IF EXISTS nutrition_samples; DROP TABLE IF EXISTS nutrition_meals;"
+                    f" DROP TABLE IF EXISTS nutrition_uploads; {HEALTH_SCHEMA}"
+                    f" PRAGMA user_version = {SCHEMA_VERSION}; COMMIT;"
+                )
 
     # Devices and pairing
 
@@ -481,133 +529,116 @@ class Store:
             "data": json.loads(row["data"]),
         }
 
-    # Nutrition uploaded from Apple Health
+    # Health data uploaded from Apple Health
 
-    def ingest_nutrition(
+    def register_types(self, types: Sequence[dict[str, Any]]) -> None:
+        now = iso(self.now())
+        with self._connect(write=True) as connection:
+            connection.executemany(
+                "INSERT INTO types (id, kind, title, group_name, unit, aggregation, updated_at)"
+                " VALUES (:id, :kind, :title, :group, :unit, :aggregation, :now)"
+                " ON CONFLICT (id) DO UPDATE SET kind = excluded.kind, title = excluded.title,"
+                " group_name = excluded.group_name, unit = excluded.unit, aggregation = excluded.aggregation,"
+                " updated_at = excluded.updated_at",
+                [entry | {"now": now} for entry in types],
+            )
+
+    def types(self) -> dict[str, dict[str, Any]]:
+        with self._connect() as connection:
+            rows = connection.execute("SELECT * FROM types").fetchall()
+        return {row["id"]: dict(row) for row in rows}
+
+    def ingest(
         self,
         *,
         device_id: str,
         batch_id: str,
-        samples: Sequence[SampleRow],
-        meals: Sequence[MealRow],
+        records: dict[str, Sequence[dict[str, Any]]],
         deleted: Sequence[str],
+        daily: Sequence[dict[str, Any]],
         rejected: int,
         complete: bool = False,
     ) -> dict[str, int]:
         """Upsert by HealthKit UUID, so a resent batch changes nothing.
 
-        `complete` means the device has read every nutrition type to the end, so the data is current.
+        `complete` means the device has read every type to the end, so the data is current.
         """
         now = iso(self.now())
+        counts = {table: len(rows) for table, rows in records.items()}
         with self._connect(write=True) as connection:
-            connection.executemany(
-                "INSERT INTO nutrition_samples (uuid, nutrient, value, start_at, end_at, utc_offset, local_date,"
-                " source_name, source_bundle_id, food_name, meal_type, write_id, device_id, received_at)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                " ON CONFLICT (uuid) DO UPDATE SET nutrient = excluded.nutrient, value = excluded.value,"
-                " start_at = excluded.start_at, end_at = excluded.end_at, utc_offset = excluded.utc_offset,"
-                " local_date = excluded.local_date, source_name = excluded.source_name,"
-                " source_bundle_id = excluded.source_bundle_id, food_name = excluded.food_name,"
-                " meal_type = excluded.meal_type, write_id = excluded.write_id, device_id = excluded.device_id,"
-                " received_at = excluded.received_at, deleted_at = NULL",
-                [
-                    (
-                        s.uuid,
-                        s.nutrient,
-                        s.value,
-                        s.start_at,
-                        s.end_at,
-                        s.utc_offset,
-                        s.local_date,
-                        s.source_name,
-                        s.source_bundle_id,
-                        s.food_name,
-                        s.meal_type,
-                        s.write_id,
-                        device_id,
-                        now,
-                    )
-                    for s in samples
-                ],
-            )
-            connection.executemany(
-                "INSERT INTO nutrition_meals (uuid, start_at, end_at, utc_offset, local_date, food_name, meal_type,"
-                " write_id, source_name, source_bundle_id, sample_uuids, device_id, received_at)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                " ON CONFLICT (uuid) DO UPDATE SET start_at = excluded.start_at, end_at = excluded.end_at,"
-                " utc_offset = excluded.utc_offset, local_date = excluded.local_date,"
-                " food_name = excluded.food_name, meal_type = excluded.meal_type, write_id = excluded.write_id,"
-                " source_name = excluded.source_name, source_bundle_id = excluded.source_bundle_id,"
-                " sample_uuids = excluded.sample_uuids, device_id = excluded.device_id,"
-                " received_at = excluded.received_at, deleted_at = NULL",
-                [
-                    (
-                        m.uuid,
-                        m.start_at,
-                        m.end_at,
-                        m.utc_offset,
-                        m.local_date,
-                        m.food_name,
-                        m.meal_type,
-                        m.write_id,
-                        m.source_name,
-                        m.source_bundle_id,
-                        json.dumps(list(m.sample_uuids)),
-                        device_id,
-                        now,
-                    )
-                    for m in meals
-                ],
-            )
+            for table, rows in records.items():
+                if not rows:
+                    continue
+                columns = list(rows[0])
+                updates = ", ".join(f"{column} = excluded.{column}" for column in columns if column != "uuid")
+                connection.executemany(
+                    f"INSERT INTO {TABLES[table]} ({', '.join(columns)}, device_id, received_at)"  # noqa: S608
+                    f" VALUES ({', '.join(':' + column for column in columns)}, :device_id, :received_at)"
+                    f" ON CONFLICT (uuid) DO UPDATE SET {updates}, device_id = excluded.device_id,"
+                    " received_at = excluded.received_at, deleted_at = NULL",
+                    [row | {"device_id": device_id, "received_at": now} for row in rows],
+                )
             removed = 0
-            for table in ("nutrition_samples", "nutrition_meals"):
+            deleted_days: dict[str, set[str]] = {}
+            for table in TABLES.values():
                 for start in range(0, len(deleted), 500):
                     chunk = list(deleted[start : start + 500])
+                    if table == "samples":
+                        # The app recomputes HealthKit statistics for the days these samples belonged to.
+                        for row in connection.execute(
+                            "SELECT type, local_date FROM samples WHERE deleted_at IS NULL"  # noqa: S608
+                            f" AND uuid IN ({','.join('?' * len(chunk))})",
+                            chunk,
+                        ):
+                            deleted_days.setdefault(row["type"], set()).add(row["local_date"])
                     cursor = connection.execute(
                         f"UPDATE {table} SET deleted_at = ? WHERE deleted_at IS NULL"  # noqa: S608
                         f" AND uuid IN ({','.join('?' * len(chunk))})",
                         [now, *chunk],
                     )
                     removed += cursor.rowcount
-            if samples or meals or deleted or rejected:
+            for stat in daily:
+                values = (stat["sum"], stat["average"], stat["minimum"], stat["maximum"])
+                if all(value is None for value in values):
+                    connection.execute(
+                        "DELETE FROM daily_stats WHERE type = ? AND date = ?", (stat["type"], stat["date"])
+                    )
+                    continue
                 connection.execute(
-                    "INSERT OR REPLACE INTO nutrition_uploads (batch_id, device_id, received_at, samples, meals,"
-                    " deleted, rejected) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (batch_id, device_id, now, len(samples), len(meals), len(deleted), rejected),
+                    "INSERT INTO daily_stats (type, date, sum, average, minimum, maximum, time_zone, device_id,"
+                    " updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (type, date) DO UPDATE SET"
+                    " sum = excluded.sum, average = excluded.average, minimum = excluded.minimum,"
+                    " maximum = excluded.maximum, time_zone = excluded.time_zone, device_id = excluded.device_id,"
+                    " updated_at = excluded.updated_at",
+                    (stat["type"], stat["date"], *values, stat["time_zone"], device_id, now),
+                )
+            counts |= {"deleted": removed, "daily": len(daily), "rejected": rejected}
+            changed_days = {type_id: sorted(days) for type_id, days in deleted_days.items()}
+            if any(counts.values()):
+                connection.execute(
+                    "INSERT OR REPLACE INTO uploads (batch_id, device_id, received_at, counts) VALUES (?, ?, ?, ?)",
+                    (batch_id, device_id, now, json.dumps(counts)),
                 )
             if complete:
                 connection.execute("UPDATE devices SET last_upload_at = ? WHERE id = ?", (now, device_id))
-        return {"samples": len(samples), "meals": len(meals), "deleted": removed}
+        return counts | {"deleted_days": changed_days}
 
-    def nutrition_samples(self, start: date, end: date) -> list[sqlite3.Row]:
+    def query(self, sql: str, parameters: Sequence[Any] = ()) -> list[sqlite3.Row]:
+        """Read-only helper for the summaries; callers pass only placeholders as parameters."""
         with self._connect() as connection:
-            return connection.execute(
-                "SELECT * FROM nutrition_samples WHERE deleted_at IS NULL AND local_date BETWEEN ? AND ?"
-                " ORDER BY start_at",
-                (start.isoformat(), end.isoformat()),
-            ).fetchall()
+            return connection.execute(sql, parameters).fetchall()
 
-    def nutrition_meals(self, start: date, end: date) -> list[sqlite3.Row]:
-        with self._connect() as connection:
-            return connection.execute(
-                "SELECT * FROM nutrition_meals WHERE deleted_at IS NULL AND local_date BETWEEN ? AND ?"
-                " ORDER BY start_at",
-                (start.isoformat(), end.isoformat()),
-            ).fetchall()
-
-    def uploaded_write_ids(self, write_ids: Sequence[str]) -> set[str]:
-        """Queue entries whose Apple Health samples Relay has already uploaded."""
+    def uploaded_write_ids(self, write_ids: Sequence[str], *, live: bool = True) -> set[str]:
+        """Queue entries whose Apple Health samples Relay has uploaded (and, with `live`, not deleted since)."""
         if not write_ids:
             return set()
-        with self._connect() as connection:
-            rows = connection.execute(
-                "SELECT DISTINCT write_id FROM nutrition_samples WHERE deleted_at IS NULL"  # noqa: S608
-                f" AND write_id IN ({','.join('?' * len(write_ids))})",
-                list(write_ids),
-            ).fetchall()
+        rows = self.query(
+            "SELECT DISTINCT write_id FROM samples WHERE"  # noqa: S608
+            f" {'deleted_at IS NULL AND ' if live else ''}write_id IN ({','.join('?' * len(write_ids))})",
+            list(write_ids),
+        )
         return {row[0] for row in rows}
 
-    def last_nutrition_upload(self) -> str | None:
-        """When a paired device last finished reading all nutrition, even if nothing had changed."""
-        with self._connect() as connection:
-            return connection.execute("SELECT MAX(last_upload_at) FROM devices WHERE revoked_at IS NULL").fetchone()[0]
+    def last_upload(self) -> str | None:
+        """When a paired device last finished reading all of Apple Health, even if nothing had changed."""
+        return self.query("SELECT MAX(last_upload_at) FROM devices WHERE revoked_at IS NULL")[0][0]

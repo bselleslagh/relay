@@ -1,35 +1,12 @@
 import Foundation
-import Security
 
-/// Keychain storage for the Relay Hub device token, separate from the Open Wearables connection.
-struct HubVault {
-    var read: () throws -> HubCredentials?
-    var save: (HubCredentials) throws -> Void
-    var clear: () throws -> Void
-
-    static let keychain: HubVault = {
-        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: AppIdentity.bundleID, kSecAttrAccount as String: "relay-hub"]
-        return HubVault(read: {
-            var q = query; q[kSecReturnData as String] = true; q[kSecMatchLimit as String] = kSecMatchLimitOne
-            var item: CFTypeRef?
-            let status = SecItemCopyMatching(q as CFDictionary, &item)
-            if status == errSecItemNotFound { return nil }
-            guard status == errSecSuccess, let data = item as? Data else { throw RelayError.storage }
-            return try JSONDecoder().decode(HubCredentials.self, from: data)
-        }, save: { credentials in
-            let attributes: [String: Any] = [kSecValueData as String: try JSONEncoder().encode(credentials),
-                kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
-            var status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-            if status == errSecItemNotFound {
-                status = SecItemAdd(query.merging(attributes) { _, new in new } as CFDictionary, nil)
-            }
-            guard status == errSecSuccess else { throw RelayError.storage }
-        }, clear: {
-            let status = SecItemDelete(query as CFDictionary)
-            guard status == errSecSuccess || status == errSecItemNotFound else { throw RelayError.storage }
-        })
-    }()
+final class NoRedirectDelegate: NSObject, URLSessionTaskDelegate {
+    func urlSession(_ session: URLSession, task: URLSessionTask,
+                    willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
+                    completionHandler: @escaping (URLRequest?) -> Void) {
+        // The device token and health payloads are only sent to the exact paired origin.
+        completionHandler(nil)
+    }
 }
 
 struct HubDeviceStatus: Decodable {
@@ -39,47 +16,66 @@ struct HubDeviceStatus: Decodable {
     enum CodingKeys: String, CodingKey { case name, timeZone = "time_zone", actionableWrites = "actionable_writes" }
 }
 
-struct NutritionReceipt: Decodable {
-    struct Rejection: Decodable { let collection: String; let index: Int; let reason: String }
-    let rejected: [Rejection]
-}
-
+/// Client for Relay Hub's device API: pairing, type registration, uploads and the Apple Health write queue.
 @MainActor
 final class HubClient {
-    private let vault: HubVault
+    private let vault: CredentialStore
     private let injectedSession: URLSession?
     private var sessions: [Bool: URLSession] = [:]
     private let delegate = NoRedirectDelegate()
-    init(vault: HubVault = .keychain, session: URLSession? = nil) {
+    init(vault: CredentialStore = KeychainStore(), session: URLSession? = nil) {
         self.vault = vault; injectedSession = session
     }
     private func session(wifiOnly: Bool) -> URLSession {
         if let injectedSession { return injectedSession }
         if let session = sessions[wifiOnly] { return session }
         let config = URLSessionConfiguration.ephemeral
-        config.timeoutIntervalForRequest = 20; config.timeoutIntervalForResource = 40
+        config.timeoutIntervalForRequest = 30; config.timeoutIntervalForResource = 120
         config.allowsCellularAccess = !wifiOnly; config.allowsExpensiveNetworkAccess = !wifiOnly
         config.waitsForConnectivity = false
         let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
         sessions[wifiOnly] = session
         return session
     }
-    func pair(server: ServerAddress, code: String, deviceName: String) async throws -> HubCredentials {
-        let code = try WearablesClient.normalizedCode(code)
+    static func normalizedCode(_ input: String) throws -> String {
+        let code = input.uppercased().filter { !$0.isWhitespace && $0 != "-" }
+        guard code.range(of: "^[A-Z2-9]{8}$", options: .regularExpression) != nil else { throw RelayError.invalidCode }
+        return code
+    }
+    /// Confirms the address answers like a Relay Hub before a pairing code is sent to it.
+    func check(server: ServerAddress) async throws {
+        let (data, status) = try await send(server: server, path: "healthz", method: "GET", body: nil, token: nil, wifiOnly: false)
+        struct Health: Decodable { let status: String }
+        guard status == 200, (try? JSONDecoder().decode(Health.self, from: data))?.status == "ok" else { throw RelayError.invalidResponse }
+    }
+    func pair(server: ServerAddress, code: String, deviceName: String) async throws -> Credentials {
+        let code = try Self.normalizedCode(code)
         let body = try JSONEncoder().encode(["code": code, "device_name": deviceName])
         let (data, status) = try await send(server: server, path: "v1/pair", method: "POST", body: body, token: nil, wifiOnly: false)
-        if status == 403 { throw Self.message(data).map(HubError.refused) ?? HubError.invalidCode }
-        if status == 429 { throw Self.message(data).map(HubError.refused) ?? HubError.rateLimited }
-        guard status == 201 else { throw HubError.server(status) }
+        if status == 403 { throw Self.message(data).map(RelayError.refused) ?? RelayError.invalidCode }
+        if status == 429 { throw Self.message(data).map(RelayError.refused) ?? RelayError.rateLimited }
+        guard status == 201 else { throw RelayError.server(status) }
         struct Paired: Decodable { let device_id: String; let token: String; let name: String }
         let paired = try JSONDecoder().decode(Paired.self, from: data)
-        guard !paired.token.isEmpty else { throw HubError.invalidResponse }
-        let credentials = HubCredentials(server: server, deviceID: paired.device_id, token: paired.token, name: paired.name)
+        guard !paired.token.isEmpty else { throw RelayError.invalidResponse }
+        let credentials = Credentials(server: server, deviceID: paired.device_id, token: paired.token, name: paired.name)
         try vault.save(credentials)
         return credentials
     }
     func status() async throws -> HubDeviceStatus {
         try JSONDecoder().decode(HubDeviceStatus.self, from: await authorized("v1/device", method: "GET", body: nil, wifiOnly: false))
+    }
+    /// Tells the hub which HealthKit types exist and the unit each is sent in.
+    func registerTypes(_ types: [[String: Any]], wifiOnly: Bool) async throws {
+        _ = try await authorized("v1/types", method: "POST", body: JSONSerialization.data(withJSONObject: ["types": types]), wifiOnly: wifiOnly)
+    }
+    func upload(_ body: Data, wifiOnly: Bool) async throws -> UploadReceipt {
+        try JSONDecoder().decode(UploadReceipt.self, from: await authorized("v1/health", method: "POST", body: body, wifiOnly: wifiOnly))
+    }
+    /// Tells the hub every type was read to the end, so it can report the data as current even when nothing changed.
+    func markCaughtUp(wifiOnly: Bool) async throws {
+        let body = try JSONSerialization.data(withJSONObject: ["batch_id": UUID().uuidString, "complete": true])
+        _ = try await authorized("v1/health", method: "POST", body: body, wifiOnly: wifiOnly)
     }
     func pull(writeAccess: String, appVersion: String, wifiOnly: Bool) async throws -> [HubWrite] {
         let body = try JSONSerialization.data(withJSONObject: ["kinds": ["meal"], "write_access": ["meal": writeAccess], "app_version": appVersion])
@@ -96,20 +92,12 @@ final class HubClient {
         let data = try await authorized("v1/writes/\(id)/ack", method: "POST", body: JSONSerialization.data(withJSONObject: object), wifiOnly: wifiOnly)
         return try JSONDecoder().decode(Acked.self, from: data).status
     }
-    func upload(_ batch: NutritionBatch, wifiOnly: Bool) async throws -> NutritionReceipt {
-        try JSONDecoder().decode(NutritionReceipt.self, from: await authorized("v1/nutrition", method: "POST", body: batch.body, wifiOnly: wifiOnly))
-    }
-    /// Tells the hub every nutrition type was read to the end, even when nothing changed.
-    func markCaughtUp(wifiOnly: Bool) async throws {
-        let body = try JSONSerialization.data(withJSONObject: ["batch_id": UUID().uuidString, "complete": true])
-        _ = try await authorized("v1/nutrition", method: "POST", body: body, wifiOnly: wifiOnly)
-    }
     private func authorized(_ path: String, method: String, body: Data?, wifiOnly: Bool) async throws -> Data {
-        guard let credentials = try vault.read() else { throw HubError.notPaired }
+        guard let credentials = try vault.read() else { throw RelayError.notConnected }
         let (data, status) = try await send(server: credentials.server, path: path, method: method, body: body, token: credentials.token, wifiOnly: wifiOnly)
-        if status == 401 { throw HubError.unpaired }
-        if status == 403 { throw HubError.refused(Self.message(data) ?? "Relay Hub refused this request.") }
-        guard (200...299).contains(status) else { throw HubError.server(status) }
+        if status == 401 { throw RelayError.expiredSession }
+        if status == 403 { throw RelayError.refused(Self.message(data) ?? "Relay Hub refused this request.") }
+        guard (200...299).contains(status) else { throw RelayError.server(status) }
         return data
     }
     private static func message(_ data: Data) -> String? {
@@ -122,7 +110,7 @@ final class HubClient {
         request.setValue("Relay/1.0 (iOS)", forHTTPHeaderField: "User-Agent")
         if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         let (data, response) = try await session(wifiOnly: wifiOnly).data(for: request)
-        guard let status = (response as? HTTPURLResponse)?.statusCode else { throw HubError.invalidResponse }
+        guard let status = (response as? HTTPURLResponse)?.statusCode else { throw RelayError.invalidResponse }
         return (data, status)
     }
 }

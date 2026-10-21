@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-from zoneinfo import ZoneInfo
-
 import pytest
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
 
 from relay_hub.config import Settings
 from relay_hub.mcp_server import build_mcp
-from relay_hub.nutrition import parse_batch
 from relay_hub.store import AckResult, Store
+
+from .conftest import upload
 
 LUNCH = {"energy_kcal": 610, "protein_g": 42, "carbohydrates_g": 12, "fat_g": 44}
 
@@ -76,17 +75,12 @@ async def test_totals_include_uploaded_health_data_and_list_queued_entries(mcp, 
         "end": "2026-10-21T06:00:00Z",
         "food_name": "Oatmeal",
     }
-    batch_id, samples, meals, deleted, _ = parse_batch(
-        {"batch_id": "b", "samples": [sample]}, ZoneInfo("Europe/Brussels")
-    )
-    store.ingest_nutrition(
-        device_id=device_id, batch_id=batch_id, samples=samples, meals=meals, deleted=deleted, rejected=0, complete=True
-    )
+    upload(store, device_id, {"batch_id": "b", "quantities": [sample], "complete": True})
     totals = await call(mcp, "get_nutrition_totals", start_date="2026-10-21")
     assert totals["days"] == [{"date": "2026-10-21", "samples": 1, "nutrients": {"energy_kcal": 350.0}}]
     assert [entry["id"] for entry in totals["not_in_totals_yet"]] == [queued["id"]]
     assert totals["removal_pending"] == []
-    assert totals["units"]["energy_kcal"] == "kcal" and totals["nutrition_synced_at"]
+    assert totals["units"]["energy_kcal"] == "kcal" and totals["synced_at"]
     log = await call(mcp, "list_food_log")
     assert log["entries"][0]["name"] == "Oatmeal"
     week = await call(mcp, "get_nutrition_totals")
@@ -112,10 +106,7 @@ async def test_totals_flag_written_entries_until_their_samples_arrive_and_pendin
         "end": "2026-10-21T10:30:00Z",
         "write_id": entry["id"],
     }
-    batch_id, samples, meals, deleted, _ = parse_batch({"batch_id": "b", "samples": [sample]}, ZoneInfo("UTC"))
-    store.ingest_nutrition(
-        device_id=device_id, batch_id=batch_id, samples=samples, meals=meals, deleted=deleted, rejected=0
-    )
+    upload(store, device_id, {"batch_id": "b", "quantities": [sample]})
     totals = await call(mcp, "get_nutrition_totals", start_date="2026-10-21")
     assert totals["not_in_totals_yet"] == [] and totals["days"][0]["nutrients"]["energy_kcal"] == 610.0
     await call(mcp, "cancel_entry", entry_id=entry["id"])

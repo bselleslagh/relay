@@ -1,99 +1,148 @@
 # Health data coverage
 
-Source: Open Wearables 0.9.0, commit ff8527a52ad8a96cd1ebe8c19344295c934ae9dc; live server OpenAPI inspected 26 September 2026.
+Relay reads 121 HealthKit quantity types, sleep stages, mindful sessions, stand hours, heart rate notifications, workouts and food entries, and sends them to Relay Hub. Generated from the HealthKit SDK headers by `scripts/build_catalog.py`. Types that need a newer iOS than the device runs are skipped.
 
-71 reviewed quantity mappings, plus sleep stages and workouts. Runtime availability depends on iPhone/iOS. All available history is queried without a date cutoff. Apple only returns records the user permits; an empty result does not prove permission was granted.
+Apple Health only returns records you allow. Empty results can mean no data or no access.
 
-Non-finite numbers (NaN and positive/negative infinity) are quietly omitted from uploads. Valid records in the same page are still sent. Invalid optional workout measurements/events are omitted individually; a workout with invalid duration is skipped. Sent counts include only uploaded records. Pages containing only invalid values advance locally without an empty upload, so invalid data cannot stall history import. The original Apple Health data is never changed.
+## Quantity types
 
-## Included quantities
+| HealthKit type | Group | Unit sent | Daily statistic |
+|---|---|---|---|
+| HKQuantityTypeIdentifierActiveEnergyBurned | activity | kcal | sum |
+| HKQuantityTypeIdentifierBasalEnergyBurned | activity | kcal | sum |
+| HKQuantityTypeIdentifierCrossCountrySkiingSpeed | activity | m/s | average, min, max |
+| HKQuantityTypeIdentifierCyclingCadence | activity | count/min | average, min, max |
+| HKQuantityTypeIdentifierCyclingFunctionalThresholdPower | activity | W | average, min, max |
+| HKQuantityTypeIdentifierCyclingPower | activity | W | average, min, max |
+| HKQuantityTypeIdentifierCyclingSpeed | activity | m/s | average, min, max |
+| HKQuantityTypeIdentifierDistanceCrossCountrySkiing | activity | m | sum |
+| HKQuantityTypeIdentifierDistanceCycling | activity | m | sum |
+| HKQuantityTypeIdentifierDistanceDownhillSnowSports | activity | m | sum |
+| HKQuantityTypeIdentifierDistancePaddleSports | activity | m | sum |
+| HKQuantityTypeIdentifierDistanceRowing | activity | m | sum |
+| HKQuantityTypeIdentifierDistanceSkatingSports | activity | m | sum |
+| HKQuantityTypeIdentifierDistanceSwimming | activity | m | sum |
+| HKQuantityTypeIdentifierDistanceWalkingRunning | activity | m | sum |
+| HKQuantityTypeIdentifierDistanceWheelchair | activity | m | sum |
+| HKQuantityTypeIdentifierEstimatedWorkoutEffortScore | activity | appleEffortScore | average, min, max |
+| HKQuantityTypeIdentifierAppleExerciseTime | activity | min | sum |
+| HKQuantityTypeIdentifierFlightsClimbed | activity | count | sum |
+| HKQuantityTypeIdentifierAppleMoveTime | activity | min | sum |
+| HKQuantityTypeIdentifierNikeFuel | activity | count | sum |
+| HKQuantityTypeIdentifierPaddleSportsSpeed | activity | m/s | average, min, max |
+| HKQuantityTypeIdentifierPhysicalEffort | activity | kcal/(kg*hr) | average, min, max |
+| HKQuantityTypeIdentifierPushCount | activity | count | sum |
+| HKQuantityTypeIdentifierRowingSpeed | activity | m/s | average, min, max |
+| HKQuantityTypeIdentifierRunningGroundContactTime | activity | ms | average, min, max |
+| HKQuantityTypeIdentifierRunningPower | activity | W | average, min, max |
+| HKQuantityTypeIdentifierRunningSpeed | activity | m/s | average, min, max |
+| HKQuantityTypeIdentifierRunningStrideLength | activity | cm | average, min, max |
+| HKQuantityTypeIdentifierRunningVerticalOscillation | activity | cm | average, min, max |
+| HKQuantityTypeIdentifierSixMinuteWalkTestDistance | activity | m | average, min, max |
+| HKQuantityTypeIdentifierStairAscentSpeed | activity | m/s | average, min, max |
+| HKQuantityTypeIdentifierStairDescentSpeed | activity | m/s | average, min, max |
+| HKQuantityTypeIdentifierAppleStandTime | activity | min | sum |
+| HKQuantityTypeIdentifierStepCount | activity | count | sum |
+| HKQuantityTypeIdentifierSwimmingStrokeCount | activity | count | sum |
+| HKQuantityTypeIdentifierVO2Max | activity | ml/kg*min | average, min, max |
+| HKQuantityTypeIdentifierWalkingAsymmetryPercentage | activity | % | average, min, max |
+| HKQuantityTypeIdentifierWalkingDoubleSupportPercentage | activity | % | average, min, max |
+| HKQuantityTypeIdentifierWalkingSpeed | activity | m/s | average, min, max |
+| HKQuantityTypeIdentifierAppleWalkingSteadiness | activity | % | average, min, max |
+| HKQuantityTypeIdentifierWalkingStepLength | activity | m | average, min, max |
+| HKQuantityTypeIdentifierWorkoutEffortScore | activity | appleEffortScore | average, min, max |
+| HKQuantityTypeIdentifierBasalBodyTemperature | body | degC | average, min, max |
+| HKQuantityTypeIdentifierBodyFatPercentage | body | % | average, min, max |
+| HKQuantityTypeIdentifierBodyMass | body | kg | average, min, max |
+| HKQuantityTypeIdentifierBodyMassIndex | body | count | average, min, max |
+| HKQuantityTypeIdentifierBodyTemperature | body | degC | average, min, max |
+| HKQuantityTypeIdentifierHeight | body | m | average, min, max |
+| HKQuantityTypeIdentifierLeanBodyMass | body | kg | average, min, max |
+| HKQuantityTypeIdentifierAppleSleepingWristTemperature | body | degC | average, min, max |
+| HKQuantityTypeIdentifierWaistCircumference | body | cm | average, min, max |
+| HKQuantityTypeIdentifierEnvironmentalAudioExposure | environment | dBASPL | average, min, max |
+| HKQuantityTypeIdentifierEnvironmentalSoundReduction | environment | dBASPL | average, min, max |
+| HKQuantityTypeIdentifierHeadphoneAudioExposure | environment | dBASPL | average, min, max |
+| HKQuantityTypeIdentifierTimeInDaylight | environment | min | sum |
+| HKQuantityTypeIdentifierUVExposure | environment | count | average, min, max |
+| HKQuantityTypeIdentifierUnderwaterDepth | environment | m | average, min, max |
+| HKQuantityTypeIdentifierWaterTemperature | environment | degC | average, min, max |
+| HKQuantityTypeIdentifierDietaryBiotin | nutrition | mcg | sum |
+| HKQuantityTypeIdentifierDietaryCaffeine | nutrition | mg | sum |
+| HKQuantityTypeIdentifierDietaryCalcium | nutrition | mg | sum |
+| HKQuantityTypeIdentifierDietaryCarbohydrates | nutrition | g | sum |
+| HKQuantityTypeIdentifierDietaryChloride | nutrition | mg | sum |
+| HKQuantityTypeIdentifierDietaryCholesterol | nutrition | mg | sum |
+| HKQuantityTypeIdentifierDietaryChromium | nutrition | mcg | sum |
+| HKQuantityTypeIdentifierDietaryCopper | nutrition | mg | sum |
+| HKQuantityTypeIdentifierDietaryEnergyConsumed | nutrition | kcal | sum |
+| HKQuantityTypeIdentifierDietaryFatMonounsaturated | nutrition | g | sum |
+| HKQuantityTypeIdentifierDietaryFatPolyunsaturated | nutrition | g | sum |
+| HKQuantityTypeIdentifierDietaryFatSaturated | nutrition | g | sum |
+| HKQuantityTypeIdentifierDietaryFatTotal | nutrition | g | sum |
+| HKQuantityTypeIdentifierDietaryFiber | nutrition | g | sum |
+| HKQuantityTypeIdentifierDietaryFolate | nutrition | mcg | sum |
+| HKQuantityTypeIdentifierDietaryIodine | nutrition | mcg | sum |
+| HKQuantityTypeIdentifierDietaryIron | nutrition | mg | sum |
+| HKQuantityTypeIdentifierDietaryMagnesium | nutrition | mg | sum |
+| HKQuantityTypeIdentifierDietaryManganese | nutrition | mg | sum |
+| HKQuantityTypeIdentifierDietaryMolybdenum | nutrition | mcg | sum |
+| HKQuantityTypeIdentifierDietaryNiacin | nutrition | mg | sum |
+| HKQuantityTypeIdentifierDietaryPantothenicAcid | nutrition | mg | sum |
+| HKQuantityTypeIdentifierDietaryPhosphorus | nutrition | mg | sum |
+| HKQuantityTypeIdentifierDietaryPotassium | nutrition | mg | sum |
+| HKQuantityTypeIdentifierDietaryProtein | nutrition | g | sum |
+| HKQuantityTypeIdentifierDietaryRiboflavin | nutrition | mg | sum |
+| HKQuantityTypeIdentifierDietarySelenium | nutrition | mcg | sum |
+| HKQuantityTypeIdentifierDietarySodium | nutrition | mg | sum |
+| HKQuantityTypeIdentifierDietarySugar | nutrition | g | sum |
+| HKQuantityTypeIdentifierDietaryThiamin | nutrition | mg | sum |
+| HKQuantityTypeIdentifierDietaryVitaminA | nutrition | mcg | sum |
+| HKQuantityTypeIdentifierDietaryVitaminB12 | nutrition | mcg | sum |
+| HKQuantityTypeIdentifierDietaryVitaminB6 | nutrition | mg | sum |
+| HKQuantityTypeIdentifierDietaryVitaminC | nutrition | mg | sum |
+| HKQuantityTypeIdentifierDietaryVitaminD | nutrition | mcg | sum |
+| HKQuantityTypeIdentifierDietaryVitaminE | nutrition | mg | sum |
+| HKQuantityTypeIdentifierDietaryVitaminK | nutrition | mcg | sum |
+| HKQuantityTypeIdentifierDietaryWater | nutrition | mL | sum |
+| HKQuantityTypeIdentifierDietaryZinc | nutrition | mg | sum |
+| HKQuantityTypeIdentifierBloodAlcoholContent | other | % | average, min, max |
+| HKQuantityTypeIdentifierInhalerUsage | other | count | sum |
+| HKQuantityTypeIdentifierInsulinDelivery | other | IU | sum |
+| HKQuantityTypeIdentifierNumberOfAlcoholicBeverages | other | count | sum |
+| HKQuantityTypeIdentifierNumberOfTimesFallen | other | count | sum |
+| HKQuantityTypeIdentifierAtrialFibrillationBurden | vitals | % | average, min, max |
+| HKQuantityTypeIdentifierBloodGlucose | vitals | mg/dL | average, min, max |
+| HKQuantityTypeIdentifierBloodPressureDiastolic | vitals | mmHg | average, min, max |
+| HKQuantityTypeIdentifierBloodPressureSystolic | vitals | mmHg | average, min, max |
+| HKQuantityTypeIdentifierElectrodermalActivity | vitals | mcS | average, min, max |
+| HKQuantityTypeIdentifierForcedExpiratoryVolume1 | vitals | L | average, min, max |
+| HKQuantityTypeIdentifierForcedVitalCapacity | vitals | L | average, min, max |
+| HKQuantityTypeIdentifierHeartRate | vitals | count/min | average, min, max |
+| HKQuantityTypeIdentifierHeartRateRecoveryOneMinute | vitals | count/min | average, min, max |
+| HKQuantityTypeIdentifierHeartRateVariabilityRMSSD | vitals | ms | average, min, max |
+| HKQuantityTypeIdentifierHeartRateVariabilitySDNN | vitals | ms | average, min, max |
+| HKQuantityTypeIdentifierOxygenSaturation | vitals | % | average, min, max |
+| HKQuantityTypeIdentifierPeakExpiratoryFlowRate | vitals | L/min | average, min, max |
+| HKQuantityTypeIdentifierPeripheralPerfusionIndex | vitals | % | average, min, max |
+| HKQuantityTypeIdentifierRespiratoryRate | vitals | count/min | average, min, max |
+| HKQuantityTypeIdentifierRestingHeartRate | vitals | count/min | average, min, max |
+| HKQuantityTypeIdentifierAppleSleepingBreathingDisturbances | vitals | count | average, min, max |
+| HKQuantityTypeIdentifierWalkingHeartRateAverage | vitals | count/min | average, min, max |
 
-| HealthKit type | Upload unit | Scale |
-|---|---|---|
-| HKQuantityTypeIdentifierHeartRate | count/min | 1 |
-| HKQuantityTypeIdentifierRestingHeartRate | count/min | 1 |
-| HKQuantityTypeIdentifierHeartRateVariabilitySDNN | ms | 1 |
-| HKQuantityTypeIdentifierHeartRateRecoveryOneMinute | count/min | 1 |
-| HKQuantityTypeIdentifierWalkingHeartRateAverage | count/min | 1 |
-| HKQuantityTypeIdentifierOxygenSaturation | % | 100 |
-| HKQuantityTypeIdentifierBloodGlucose | mg/dL | 1 |
-| HKQuantityTypeIdentifierBloodPressureSystolic | mmHg | 1 |
-| HKQuantityTypeIdentifierBloodPressureDiastolic | mmHg | 1 |
-| HKQuantityTypeIdentifierRespiratoryRate | count/min | 1 |
-| HKQuantityTypeIdentifierHeight | m | 1 |
-| HKQuantityTypeIdentifierBodyMass | kg | 1 |
-| HKQuantityTypeIdentifierBodyFatPercentage | % | 1 |
-| HKQuantityTypeIdentifierBodyMassIndex | count | 1 |
-| HKQuantityTypeIdentifierLeanBodyMass | kg | 1 |
-| HKQuantityTypeIdentifierBodyTemperature | degC | 1 |
-| HKQuantityTypeIdentifierVO2Max | ml/kg*min | 1 |
-| HKQuantityTypeIdentifierSixMinuteWalkTestDistance | m | 1 |
-| HKQuantityTypeIdentifierStepCount | count | 1 |
-| HKQuantityTypeIdentifierActiveEnergyBurned | kcal | 1 |
-| HKQuantityTypeIdentifierBasalEnergyBurned | kcal | 1 |
-| HKQuantityTypeIdentifierAppleStandTime | min | 1 |
-| HKQuantityTypeIdentifierAppleExerciseTime | min | 1 |
-| HKQuantityTypeIdentifierFlightsClimbed | count | 1 |
-| HKQuantityTypeIdentifierDistanceWalkingRunning | m | 1 |
-| HKQuantityTypeIdentifierDistanceCycling | m | 1 |
-| HKQuantityTypeIdentifierDistanceSwimming | m | 1 |
-| HKQuantityTypeIdentifierDistanceDownhillSnowSports | m | 1 |
-| HKQuantityTypeIdentifierDistancePaddleSports | m | 1 |
-| HKQuantityTypeIdentifierDistanceRowing | m | 1 |
-| HKQuantityTypeIdentifierDistanceSkatingSports | m | 1 |
-| HKQuantityTypeIdentifierDistanceWheelchair | m | 1 |
-| HKQuantityTypeIdentifierDistanceCrossCountrySkiing | m | 1 |
-| HKQuantityTypeIdentifierWalkingStepLength | m | 1 |
-| HKQuantityTypeIdentifierWalkingSpeed | m/s | 1 |
-| HKQuantityTypeIdentifierWalkingDoubleSupportPercentage | % | 1 |
-| HKQuantityTypeIdentifierWalkingAsymmetryPercentage | % | 1 |
-| HKQuantityTypeIdentifierAppleWalkingSteadiness | % | 1 |
-| HKQuantityTypeIdentifierStairDescentSpeed | m/s | 1 |
-| HKQuantityTypeIdentifierStairAscentSpeed | m/s | 1 |
-| HKQuantityTypeIdentifierRunningPower | W | 1 |
-| HKQuantityTypeIdentifierRunningSpeed | m/s | 1 |
-| HKQuantityTypeIdentifierRunningVerticalOscillation | cm | 1 |
-| HKQuantityTypeIdentifierRunningGroundContactTime | ms | 1 |
-| HKQuantityTypeIdentifierRunningStrideLength | cm | 1 |
-| HKQuantityTypeIdentifierSwimmingStrokeCount | count | 1 |
-| HKQuantityTypeIdentifierEnvironmentalAudioExposure | dBASPL | 1 |
-| HKQuantityTypeIdentifierHeadphoneAudioExposure | dBASPL | 1 |
-| HKQuantityTypeIdentifierEnvironmentalSoundReduction | dBASPL | 1 |
-| HKQuantityTypeIdentifierTimeInDaylight | min | 1 |
-| HKQuantityTypeIdentifierWorkoutEffortScore | appleEffortScore | 1 |
-| HKQuantityTypeIdentifierEstimatedWorkoutEffortScore | appleEffortScore | 1 |
-| HKQuantityTypeIdentifierAppleMoveTime | min | 1 |
-| HKQuantityTypeIdentifierAppleSleepingWristTemperature | degC | 1 |
-| HKQuantityTypeIdentifierForcedVitalCapacity | L | 1 |
-| HKQuantityTypeIdentifierForcedExpiratoryVolume1 | L | 1 |
-| HKQuantityTypeIdentifierPeakExpiratoryFlowRate | L/min | 1 |
-| HKQuantityTypeIdentifierBasalBodyTemperature | degC | 1 |
-| HKQuantityTypeIdentifierAppleSleepingBreathingDisturbances | count | 1 |
-| HKQuantityTypeIdentifierWaistCircumference | cm | 1 |
-| HKQuantityTypeIdentifierNumberOfTimesFallen | count | 1 |
-| HKQuantityTypeIdentifierInhalerUsage | count | 1 |
-| HKQuantityTypeIdentifierNumberOfAlcoholicBeverages | count | 1 |
-| HKQuantityTypeIdentifierUVExposure | count | 1 |
-| HKQuantityTypeIdentifierPushCount | count | 1 |
-| HKQuantityTypeIdentifierUnderwaterDepth | m | 1 |
-| HKQuantityTypeIdentifierWaterTemperature | degC | 1 |
-| HKQuantityTypeIdentifierCyclingCadence | count/min | 1 |
-| HKQuantityTypeIdentifierCyclingFunctionalThresholdPower | W | 1 |
-| HKQuantityTypeIdentifierCyclingPower | W | 1 |
-| HKQuantityTypeIdentifierCyclingSpeed | m/s | 1 |
+Percentages are sent as 0–100. Heart and respiratory rates use count/min; stride length and waist circumference use centimetres.
 
-Height and walking step length are sent in meters because this server multiplies them by 100. Body fat and walking ratios stay fractions because the server converts them. Oxygen saturation is sent as percent. Running lengths and waist circumference use centimeters; HRV/contact time use milliseconds.
+## Other records
 
-## Not yet transferable through this server contract
+- **Sleep stages** (`HKCategoryTypeIdentifierSleepAnalysis`): in bed, asleep, awake, core, deep and REM.
+- **Mindful sessions, stand hours and heart rate notifications** (high, low, irregular rhythm), as category samples.
+- **Workouts**: activity, duration, active energy, distance, heart rate statistics and workout events. Routes and high-frequency series are not uploaded.
+- **Food entries** (`HKCorrelationTypeIdentifierFood`): group the nutrition samples of one meal.
 
-Nutrition and hydration (when Relay Hub is paired, Relay reads these and sends them to Relay Hub instead; see server/README.md); reproductive and symptom categories; mindfulness; ECG waveforms; audiograms; clinical records; medication records; activity summaries; workout routes/series; characteristics such as date of birth and blood type. Apart from Relay Hub's nutrition types, these are not requested or presented as synced.
+## Not uploaded
 
-The following mapped quantities are excluded because the installed server uses incompatible or ambiguous dimensions: AtrialFibrillationBurden, BloodAlcoholContent, CrossCountrySkiingSpeed, ElectrodermalActivity, InsulinDelivery, NikeFuel, PaddleSportsSpeed, PeripheralPerfusionIndex, PhysicalEffort, RowingSpeed.
+Clinical records, medications, ECG waveforms, audiograms, reproductive health and symptom categories, state of mind, workout routes, and characteristics such as date of birth or blood type.
 
-Workout summaries, metadata and events are included; routes and high-frequency workout series are not. Uploaded metadata is preserved in the request but the server may not retain it in normalized tables.
+## Accuracy
 
-HealthKit deletions are recorded in an on-device journal, not deleted from the server: the SDK ingestion API has no deletion contract.
-
-## Receipt semantics
-
-HTTP 202 with a valid receipt confirms acceptance into the server queue, not completed normalization. UI counters mean records sent, not records verified in the database. Background delivery, real HealthKit coverage, and server ingestion require physical-device testing.
+Raw samples keep their HealthKit UUIDs, timestamps, time zones, source apps and devices. Deletions in Apple Health are sent to Relay Hub. Daily totals come from HealthKit's own statistics, which merge overlapping sources such as iPhone and Apple Watch, rather than from adding raw samples.

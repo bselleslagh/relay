@@ -64,8 +64,8 @@ struct HealthAccessView: View {
     var body: some View {
         List {
             Section {
-                Label("Read-only by design", systemImage: "heart").font(.title3)
-                Text("Choose which records Relay can read. It never writes to Apple Health, and sends your selected records only to your paired server.")
+                Label("You choose what Relay reads", systemImage: "heart").font(.title3)
+                Text("Choose which records Relay can read. It sends your selected records only to your paired server. Relay writes to Apple Health only if you pair Relay Hub and allow it, and then only the meals queued there.")
             }
             Section("What Relay can transfer") {
                 ForEach(HealthGroup.allCases) { group in Label(group.rawValue, systemImage: group.symbol) }

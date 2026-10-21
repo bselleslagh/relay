@@ -11,10 +11,11 @@
 <p align="center">
   <a href="#get-started">Get started</a> ·
   <a href="docs/COVERAGE.md">Health data coverage</a> ·
+  <a href="server/README.md">Relay Hub: AI meal logging</a> ·
   <a href="docs/OPEN-WEARABLES-AGENT-HANDOFF.example.md">Connect an AI agent</a>
 </p>
 
-Relay sends the Apple Health records you choose to your own Open Wearables server. Explore your history, ask your agents questions about it, and build your own workflows around the data.
+Relay sends the Apple Health records you choose to your own Open Wearables server. Explore your history, ask your agents questions about it, and build your own workflows around the data. With the optional [Relay Hub](server/README.md), an AI assistant can also log meals into Apple Health and track your nutrition.
 
 A smoky teal interface pairs native Liquid Glass controls with a mint pixel heart and athletes that cycle through gym, running, cycling and tennis.
 
@@ -40,12 +41,13 @@ A smoky teal interface pairs native Liquid Glass controls with a mint pixel hear
 | Feature | How it works |
 | --- | --- |
 | Your server | Pair with your own HTTPS Open Wearables instance using a one-time invitation code. |
-| Your choice | Read only the Apple Health categories you allow. Relay never writes to Apple Health. |
+| Your choice | Read only the Apple Health categories you allow. Relay writes to Apple Health only if you pair Relay Hub, and then only the meals queued there. |
 | Resumable history | Import available history in small batches, then pick up new records with anchored queries. |
 | Automatic updates | Sync while open and during background opportunities scheduled by iOS. |
 | Connection recovery | Keep pending batches on the iPhone and retry when the server is reachable. |
 | Native interface | SwiftUI, Liquid Glass navigation, system controls, accessibility text sizes and Reduce Motion support. |
 | Agent access | Connect a separate agent to the server through the official MCP adapter. |
+| AI meal logging | Optional [Relay Hub](server/README.md) on your server: an assistant logs meals over MCP, Relay saves them to Apple Health and syncs your nutrition back. |
 
 ## Get started
 
@@ -75,11 +77,21 @@ RELAY_BUNDLE_IDENTIFIER = com.yourdomain.relay
 - Automatic or manual sync, Wi-Fi-only transport restrictions, offline recovery and resumable history import.
 - After granting additional Health access, **Settings → History → Rescan all history** includes previously inaccessible older records. The app preserves an unsent batch before allowing a rescan.
 
-**This is not a complete Apple Health archive.** The installed Open Wearables ingestion contract lacks some HealthKit mappings and deletion support. Nutrition, reproductive health, mindfulness, symptoms, medication records, clinical records, ECG waveforms, audiograms, workout routes/series and some measurements are not uploaded. See [the exact coverage and unit decisions](docs/COVERAGE.md). Deleted sample IDs are retained locally, but corresponding server records are not removed.
+**This is not a complete Apple Health archive.** The installed Open Wearables ingestion contract lacks some HealthKit mappings and deletion support. Nutrition is not uploaded to Open Wearables; [Relay Hub](server/README.md) syncs it instead. Reproductive health, mindfulness, symptoms, medication records, clinical records, ECG waveforms, audiograms, workout routes/series and some measurements are not uploaded. See [the exact coverage and unit decisions](docs/COVERAGE.md). Deleted sample IDs are retained locally, but corresponding server records are not removed.
 
 An HTTP 202 receipt means the server queued the upload. Relay’s **sent** counters describe acceptance, not database ingestion or unique records. Check the server’s **Syncs** page for processing outcomes. Server normalization may discard metadata that was present in the upload.
 
 Apple does not reveal denied read permissions. Empty results can mean no data or no access. iOS schedules background delivery; there is no permanently running service or guaranteed interval. Locked health data, system restrictions, force-quitting the app, and network reachability can delay uploads. Reopen Relay after force-quit.
+
+## Relay Hub: AI meal logging (optional)
+
+Relay Hub is a small Docker service you run next to Open Wearables, reachable only on your tailnet. It does not depend on Open Wearables. An AI assistant connects to its MCP endpoint and calls `log_meal`. Relay pulls queued meals during sync, saves each as one Apple Health food entry with stable sync identifiers, and acknowledges it. Relay then uploads Apple Health nutrition (energy, macros, fiber, sugar, saturated fat, sodium, cholesterol, caffeine, water) back to the hub, so the assistant can read daily totals and a food log.
+
+1. On your server: `cd server && cp .env.example .env`, set `RELAY_HUB_MCP_TOKEN`, run `docker compose up -d --build`, then `tailscale serve --bg --https=8443 http://127.0.0.1:8787`.
+2. Run `docker compose exec relay-hub relay-hub pair-device` and enter the one-time code in **Settings → Relay Hub**. Then tap **Allow nutrition access**.
+3. Add `https://<machine>.<tailnet>.ts.net:8443/mcp` with the bearer token to your MCP client.
+
+Relay asks for Apple Health write access only for dietary energy, protein, carbohydrates, total fat, fiber and sugar. See [the Relay Hub guide](server/README.md) for the tools, security model and API.
 
 ## Development
 
@@ -99,6 +111,8 @@ The decorative artwork beside “You move. Relay keeps up.” cycles through gym
 - `Relay/Core`: server validation, Keychain, HTTP client and protected checkpoint store.
 - `Relay/Health`: reviewed catalog, HealthKit queries and payload mapping.
 - `Relay/Sync`: background scheduling and persisted upload/checkpoint lifecycle.
+- `Relay/Hub`: Relay Hub client, nutrition reads, queued Apple Health writes and their sync loop.
+- `server`: Relay Hub (Python, FastMCP, SQLite). Run its tests with `cd server && uv run pytest`.
 - `Relay/UI`: native tabs, design components, setup and status screens.
 - `RelayTests`, `RelayUITests`: transfer, security, unit conversion and navigation tests.
 - [Validation evidence](docs/VALIDATION.md).

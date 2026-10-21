@@ -12,10 +12,10 @@ struct RelayApp: App {
                 .preferredColorScheme(.dark)
                 .tint(RelayTheme.mint)
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .active { Task { await model.foreground() } }
+                    if phase == .active { Task { await model.foreground() }; HubModel.shared.becameActive() }
                     if phase == .background {
                         // A foreground history crawl yields to system-scheduled delivery.
-                        model.cancelWork()
+                        model.cancelWork(); HubModel.shared.enteredBackground()
                         BackgroundCoordinator.schedule(enabled: !model.isDemo && model.connected && model.automatic && model.healthRequested)
                     }
                 }

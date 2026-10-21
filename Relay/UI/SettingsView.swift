@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
+    @State private var hub = HubModel.shared
     @State private var sheet: RelaySheet?
     var body: some View {
         ScrollView {
@@ -17,7 +18,7 @@ struct SettingsView: View {
                 }.smoked().buttonStyle(.plain)
                 SectionCaption(text: "Sync").padding(.top, 12)
                 VStack(spacing: 0) {
-                    RelayToggle(title: "Automatic sync", symbol: "arrow.triangle.2.circlepath", identifier: "automatic-toggle", value: Binding(get: { model.automatic }, set: model.setAutomatic))
+                    RelayToggle(title: "Automatic sync", symbol: "arrow.triangle.2.circlepath", identifier: "automatic-toggle", value: Binding(get: { model.automatic }, set: { model.setAutomatic($0); hub.configureAutomatic() }))
                     Divider().padding(.horizontal, 18)
                     RelayToggle(title: "Wi-Fi only", symbol: "wifi", identifier: "wifi-toggle", value: Binding(get: { model.wifiOnly }, set: model.setWiFiOnly))
                     Divider().padding(.horizontal, 18)
@@ -30,6 +31,12 @@ struct SettingsView: View {
                     Divider().padding(.horizontal, 18)
                     Button { sheet = .coverage } label: { RelayRow(title: "Data coverage", symbol: "externaldrive") }
                 }.smoked().buttonStyle(.plain)
+                SectionCaption(text: "Nutrition & AI").padding(.top, 12)
+                VStack(spacing: 0) {
+                    Button { sheet = .hub } label: { RelayRow(title: "Relay Hub", symbol: "fork.knife", detail: hub.statusText) }
+                        .accessibilityIdentifier("hub-row")
+                }.smoked().buttonStyle(.plain)
+                Text("Meals your AI assistant logs reach Apple Health through Relay Hub.").font(.caption).foregroundStyle(RelayTheme.muted).padding(.horizontal, 6)
                 HStack(spacing: 15) { PixelHeartMark(); Text("Your data. Your server.").font(.subheadline) }.padding(.top, 8)
                 Text("Relay 1.0 · Made for your iPhone").font(.caption2).foregroundStyle(RelayTheme.muted)
             }.padding(.horizontal, 22).padding(.bottom, 26)

@@ -11,13 +11,16 @@ enum BackgroundCoordinator {
                 Task { @MainActor in
                     let work = Task { @MainActor in
                         let model = AppModel.shared
+                        // Relay Hub runs alongside Open Wearables; each uses its own HealthKit store and session.
+                        async let hub = HubModel.shared.sync(background: true)
                         let success = await model.sync(background: true)
-                        task.setTaskCompleted(success: success)
+                        let hubSuccess = await hub
+                        task.setTaskCompleted(success: success || hubSuccess)
                         schedule(enabled: model.automatic && model.connected && model.healthRequested)
                     }
                     task.expirationHandler = {
                         work.cancel()
-                        Task { @MainActor in AppModel.shared.cancelWork() }
+                        Task { @MainActor in AppModel.shared.cancelWork(); HubModel.shared.cancelWork() }
                     }
                 }
             }
@@ -25,7 +28,7 @@ enum BackgroundCoordinator {
     }
     static func schedule(enabled: Bool) {
         for identifier in [refresh, processing] { BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: identifier) }
-        guard enabled else { return }
+        guard enabled || HubModel.shared.wantsBackground else { return }
         let refreshRequest = BGAppRefreshTaskRequest(identifier: refresh)
         refreshRequest.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
         let processingRequest = BGProcessingTaskRequest(identifier: processing)
@@ -41,11 +44,11 @@ final class RelayAppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         if !ProcessInfo.processInfo.arguments.contains("--demo") {
             BackgroundCoordinator.register()
-            if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil { AppModel.shared.start() }
+            if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil { AppModel.shared.start(); HubModel.shared.start() }
         }
         return true
     }
     func applicationProtectedDataDidBecomeAvailable(_ application: UIApplication) {
-        Task { @MainActor in await AppModel.shared.foreground() }
+        Task { @MainActor in await AppModel.shared.foreground(); _ = await HubModel.shared.sync() }
     }
 }

@@ -33,6 +33,19 @@ final class RelayUITests: XCTestCase {
         XCTAssertFalse(app.buttons["pair-button"].isEnabled)
         capture("Relay-Connect", app: app)
     }
+    func testRelayHubPairingScreenKeepsSecretsOffTheScreen() throws {
+        let app = XCUIApplication(); app.launchArguments = ["--demo"]; app.launch()
+        app.tabBars.buttons["Settings"].tap()
+        let row = app.buttons["hub-row"]
+        for _ in 0..<6 where !row.isHittable { app.swipeUp() }
+        XCTAssertTrue(row.waitForExistence(timeout: 3))
+        row.tap()
+        XCTAssertTrue(app.navigationBars["Relay Hub"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.textFields["hub-address"].exists)
+        XCTAssertTrue(app.secureTextFields["hub-code"].exists, "Pairing codes are entered in a secure field")
+        XCTAssertFalse(app.buttons["hub-pair-button"].isEnabled, "Demo mode never pairs")
+        capture("Relay-Hub", app: app)
+    }
     func testLargeTextKeepsNavigationAndActionsAccessible() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--demo", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]

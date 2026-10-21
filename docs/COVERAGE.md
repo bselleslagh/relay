@@ -86,7 +86,7 @@ Height and walking step length are sent in meters because this server multiplies
 
 ## Not yet transferable through this server contract
 
-Nutrition and hydration; reproductive and symptom categories; mindfulness; ECG waveforms; audiograms; clinical records; medication records; activity summaries; workout routes/series; characteristics such as date of birth and blood type. These are not requested or presented as synced.
+Nutrition and hydration (when Relay Hub is paired, Relay reads these and sends them to Relay Hub instead; see server/README.md); reproductive and symptom categories; mindfulness; ECG waveforms; audiograms; clinical records; medication records; activity summaries; workout routes/series; characteristics such as date of birth and blood type. Apart from Relay Hub's nutrition types, these are not requested or presented as synced.
 
 The following mapped quantities are excluded because the installed server uses incompatible or ambiguous dimensions: AtrialFibrillationBurden, BloodAlcoholContent, CrossCountrySkiingSpeed, ElectrodermalActivity, InsulinDelivery, NikeFuel, PaddleSportsSpeed, PeripheralPerfusionIndex, PhysicalEffort, RowingSpeed.
 

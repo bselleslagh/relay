@@ -45,5 +45,5 @@ enum HealthCatalog {
                 HealthEntry(type: HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!, title: "Sleep stages", group: .sleep)] + quantities
     }
     static var readTypes: Set<HKObjectType> { Set(entries.map(\.type)) }
-    static let limitations = "Open Wearables currently cannot store every Apple Health type. Nutrition, mindfulness, reproductive health, symptoms, medications, clinical records, ECGs, audiograms, workout routes and some measurements are not included. Deletions in Apple Health are recorded locally but cannot be mirrored to this server."
+    static let limitations = "Open Wearables currently cannot store every Apple Health type. Nutrition is not sent to Open Wearables; pair Relay Hub to sync it. Mindfulness, reproductive health, symptoms, medications, clinical records, ECGs, audiograms, workout routes and some measurements are not included. Deletions in Apple Health are recorded locally but cannot be mirrored to this server."
 }

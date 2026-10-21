@@ -29,9 +29,23 @@ final class RelayUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["In sync."].exists)
         app.buttons["primary-sync-action"].tap()
         XCTAssertTrue(app.textFields["server-address"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.secureTextFields["invitation-code"].exists)
+        XCTAssertTrue(app.secureTextFields["pairing-code"].exists, "Pairing codes are entered in a secure field")
         XCTAssertFalse(app.buttons["pair-button"].isEnabled)
         capture("Relay-Connect", app: app)
+    }
+    func testMealLoggingShowsWriteAccessAndRecentEntries() throws {
+        let app = XCUIApplication(); app.launchArguments = ["--demo"]; app.launch()
+        app.tabBars.buttons["Settings"].tap()
+        let row = app.buttons["meal-log-row"]
+        XCTAssertTrue(row.waitForExistence(timeout: 3))
+        for _ in 0..<6 where !row.isHittable { app.swipeUp() }
+        row.tap()
+        XCTAssertTrue(app.navigationBars["Meal logging"].waitForExistence(timeout: 3))
+        let allowed = NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "Allowed", "Allowed")
+        XCTAssertTrue(app.descendants(matching: .any).matching(allowed).firstMatch.exists, "Write access is shown")
+        XCTAssertTrue(app.staticTexts["Chicken salad · 610 kcal"].exists)
+        XCTAssertFalse(app.buttons["meal-access-button"].isEnabled, "Demo mode never requests Health access")
+        capture("Relay-Meal-Logging", app: app)
     }
     func testLargeTextKeepsNavigationAndActionsAccessible() throws {
         let app = XCUIApplication()

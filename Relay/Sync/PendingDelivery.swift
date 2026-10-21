@@ -10,7 +10,8 @@ enum PendingDelivery {
     ) async throws -> SyncState {
         guard let pending = state.pending else { return state }
         try Task.checkCancellation()
-        if pending.recordCount > 0 { try await upload(pending) }
+        // Pages with only deletions are still sent: Relay Hub mirrors them.
+        if pending.recordCount > 0 || pending.deletions > 0 { try await upload(pending) }
         var next = state
         next.commitPending()
         try persist(next)

@@ -8,12 +8,15 @@
 
 /* Begin PBXBuildFile section */
 		0384DE490B4DAFEA6E35F216 /* PendingDelivery.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF9E7AE8E7C5A0C9F67AC603 /* PendingDelivery.swift */; };
+		30A12DEEFA90853D6F04588D /* HubTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B08EF665586A0DB3CDEE572 /* HubTests.swift */; };
 		32F0A43CF259F78AB0D300A3 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B3BEE3BA4199277F220DCD0 /* Models.swift */; };
+		5396997BB13236A7C00EF89C /* HealthWrites.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A93667E9A2113ECF026DAD5 /* HealthWrites.swift */; };
 		5537BF2868592255AAF0F670 /* RelayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 948EF6B3DA85FF1BA8CFC6EE /* RelayApp.swift */; };
-		743A017B1361DCD70E595ED6 /* WearablesClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0179565F8B9161EB1B733C7A /* WearablesClient.swift */; };
+		63A2A8BC2AE56A9EFD234A90 /* HubClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E935B16EE43D140DBB82500B /* HubClient.swift */; };
 		7C7AEACC8795FB6A6C65203A /* SetupViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10FF2C98706DA4BC0234F2AE /* SetupViews.swift */; };
 		821395D106C01790608CB730 /* HealthReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AD3A80A11C261984C524441 /* HealthReader.swift */; };
 		83A8BA29AC759A450A261572 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 359767A5465051721E7F2076 /* Assets.xcassets */; };
+		87B7C9507FCBD5E138F1E86B /* MealLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E80C3AF484754409D5D39FF5 /* MealLogView.swift */; };
 		94787E247BD349906488F738 /* HealthDataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5F9ED75486AB6643C512AFB /* HealthDataView.swift */; };
 		9A4BB634D3E171AD7A825B65 /* RelayUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8E7A997B5D969E134813EF8 /* RelayUITests.swift */; };
 		9ED060105B789ED3C5278037 /* RelayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82F98404629EA6F3162215CC /* RelayTests.swift */; };
@@ -49,9 +52,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		0179565F8B9161EB1B733C7A /* WearablesClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WearablesClient.swift; sourceTree = "<group>"; };
 		0E4BE5CA9F4EC2A4764B71E9 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		10FF2C98706DA4BC0234F2AE /* SetupViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupViews.swift; sourceTree = "<group>"; };
+		1B08EF665586A0DB3CDEE572 /* HubTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubTests.swift; sourceTree = "<group>"; };
+		2A93667E9A2113ECF026DAD5 /* HealthWrites.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthWrites.swift; sourceTree = "<group>"; };
 		359767A5465051721E7F2076 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		43FB1D5A89EDA76675BB034F /* SyncView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncView.swift; sourceTree = "<group>"; };
 		49E0A1F5A4494670D0696696 /* BackgroundCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundCoordinator.swift; sourceTree = "<group>"; };
@@ -75,6 +79,8 @@
 		DD6546E114339B049F0E091E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		DF9E7AE8E7C5A0C9F67AC603 /* PendingDelivery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingDelivery.swift; sourceTree = "<group>"; };
 		E5E2E66A23B026444512C1C3 /* PixelSportsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelSportsView.swift; sourceTree = "<group>"; };
+		E80C3AF484754409D5D39FF5 /* MealLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealLogView.swift; sourceTree = "<group>"; };
+		E935B16EE43D140DBB82500B /* HubClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubClient.swift; sourceTree = "<group>"; };
 		F4DC47C7A8176BAA2E819272 /* WorkoutNames.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutNames.swift; sourceTree = "<group>"; };
 		F8E7A997B5D969E134813EF8 /* RelayUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -84,6 +90,7 @@
 			isa = PBXGroup;
 			children = (
 				A5F9ED75486AB6643C512AFB /* HealthDataView.swift */,
+				E80C3AF484754409D5D39FF5 /* MealLogView.swift */,
 				E5E2E66A23B026444512C1C3 /* PixelSportsView.swift */,
 				89827C0F5EB08EFD2F68D7E5 /* RelayTheme.swift */,
 				0E4BE5CA9F4EC2A4764B71E9 /* RootView.swift */,
@@ -100,6 +107,7 @@
 				842BF12C38DCD93B842205A6 /* Catalog.json */,
 				C716D13052571026E2807976 /* HealthCatalog.swift */,
 				4AD3A80A11C261984C524441 /* HealthReader.swift */,
+				2A93667E9A2113ECF026DAD5 /* HealthWrites.swift */,
 				D0FA09AE8C01CD979B44534B /* PayloadBuilder.swift */,
 				F4DC47C7A8176BAA2E819272 /* WorkoutNames.swift */,
 			);
@@ -127,9 +135,9 @@
 		7ABF3EB24088D5B93B2DA7E2 /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				E935B16EE43D140DBB82500B /* HubClient.swift */,
 				9B3BEE3BA4199277F220DCD0 /* Models.swift */,
 				58F141BE35C292EA1CF94E29 /* SecureStore.swift */,
-				0179565F8B9161EB1B733C7A /* WearablesClient.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -181,6 +189,7 @@
 		E9C14B8A9590FCA3EDCFEAEA /* RelayTests */ = {
 			isa = PBXGroup;
 			children = (
+				1B08EF665586A0DB3CDEE572 /* HubTests.swift */,
 				82F98404629EA6F3162215CC /* RelayTests.swift */,
 			);
 			path = RelayTests;
@@ -310,6 +319,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				30A12DEEFA90853D6F04588D /* HubTests.swift in Sources */,
 				9ED060105B789ED3C5278037 /* RelayTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -323,6 +333,9 @@
 				EBD19CA43805AFAB7FC39C60 /* HealthCatalog.swift in Sources */,
 				94787E247BD349906488F738 /* HealthDataView.swift in Sources */,
 				821395D106C01790608CB730 /* HealthReader.swift in Sources */,
+				5396997BB13236A7C00EF89C /* HealthWrites.swift in Sources */,
+				63A2A8BC2AE56A9EFD234A90 /* HubClient.swift in Sources */,
+				87B7C9507FCBD5E138F1E86B /* MealLogView.swift in Sources */,
 				32F0A43CF259F78AB0D300A3 /* Models.swift in Sources */,
 				F6252EBA33BCFB1A82085802 /* PayloadBuilder.swift in Sources */,
 				0384DE490B4DAFEA6E35F216 /* PendingDelivery.swift in Sources */,
@@ -334,7 +347,6 @@
 				BA15EAC3D15C223E5474AAA2 /* SettingsView.swift in Sources */,
 				7C7AEACC8795FB6A6C65203A /* SetupViews.swift in Sources */,
 				E814714AA80A96E41B464871 /* SyncView.swift in Sources */,
-				743A017B1361DCD70E595ED6 /* WearablesClient.swift in Sources */,
 				F872ADCDB4A1497C6282AE15 /* WorkoutNames.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

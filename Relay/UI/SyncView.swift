@@ -26,7 +26,7 @@ struct SyncView: View {
                     VStack(alignment: .leading, spacing: 22) {
                         Label("Apple Health", systemImage: "heart").font(.title3)
                         HStack { Rectangle().fill(.white.opacity(0.2)).frame(height: 1); Image(systemName: "arrow.down").foregroundStyle(RelayTheme.mint); Rectangle().fill(.white.opacity(0.2)).frame(height: 1) }
-                        Label("Your Open Wearables server", systemImage: "externaldrive").font(.title3)
+                        Label("Your Relay Hub", systemImage: "externaldrive").font(.title3)
                         Text("Your history, in your hands. Pair once, choose your health access, and let Relay take care of the uploads.")
                             .font(.subheadline).foregroundStyle(RelayTheme.muted)
                     }.padding(24).smoked()
@@ -47,20 +47,20 @@ struct SyncView: View {
                 }
                 Button {
                     if !model.connected { sheet = .connection }
-                    else if !model.healthRequested { sheet = .health }
+                    else if !model.healthRequested || model.healthNeedsReview { sheet = .health }
                     else { Task { _ = await model.sync() } }
                 } label: {
                     HStack(spacing: 12) {
                         if model.busy { ProgressView().tint(.white) }
                         else { Image(systemName: model.connected ? "arrow.triangle.2.circlepath" : "link").font(.title3) }
-                        Text(!model.connected ? "Connect your server" : !model.healthRequested ? "Choose Health access" : model.busy ? "Sending…" : "Sync now")
+                        Text(!model.connected ? "Connect your Relay Hub" : !model.healthRequested ? "Choose Health access" : model.healthNeedsReview ? "Review Health access" : model.busy ? "Sending…" : "Sync now")
                     }.frame(maxWidth: .infinity).padding(.vertical, 10)
                 }
                 .buttonStyle(.glass).controlSize(.large).disabled(model.busy)
                 .accessibilityIdentifier("primary-sync-action")
                 VStack(spacing: 5) {
                     Text("Background updates are managed by iOS.")
-                    if model.connected { Text("Sent counts confirm upload acceptance, not processing.") }
+                    if model.connected { Text("Sent counts are records your Relay Hub stored.") }
                 }.font(.caption2).foregroundStyle(RelayTheme.muted).multilineTextAlignment(.center).frame(maxWidth: .infinity)
             }.padding(.horizontal, 22).padding(.bottom, 24)
         }

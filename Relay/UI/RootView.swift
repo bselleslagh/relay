@@ -25,7 +25,7 @@ struct RootView: View {
 }
 
 enum RelaySheet: String, Identifiable {
-    case connection, health, coverage, history, transfer
+    case connection, health, coverage, history, transfer, meals
     var id: String { rawValue }
 }
 
@@ -41,6 +41,7 @@ struct RelaySheetContent: View {
                 case .coverage: CoverageView()
                 case .history: HistoryView()
                 case .transfer: TransferDetailsView()
+                case .meals: MealLogView()
                 }
             }
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done", systemImage: "xmark") { dismiss() }.labelStyle(.iconOnly) } }

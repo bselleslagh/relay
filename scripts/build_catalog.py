@@ -1,33 +1,144 @@
-"""Rebuild Relay's reviewed catalog from a local Open Wearables 0.9.0 checkout.
-Run: python3 scripts/build_catalog.py PATH_TO_OPEN_WEARABLES
-The resulting JSON is checked in; this script is not a build-time dependency.
+"""Rebuild Relay's quantity catalog from the HealthKit SDK headers of the active Xcode.
+
+Run: python3 scripts/build_catalog.py
+Every HealthKit quantity type is included. Units come from Apple's header comments, with a few display overrides.
+The resulting JSON and docs/COVERAGE.md are checked in; this script is not a build-time dependency.
 """
-import json,re,pathlib,sys
-root=pathlib.Path(sys.argv[1])/'backend'
-s=(root/'app/constants/series_types/sdk/metric_types.py').read_text()
-ids=dict(re.findall(r'^    (\w+) = "(HKQuantityTypeIdentifier\w+)"',s,re.M))
-maps=dict(re.findall(r'SDKMetricType\.(\w+): SeriesType\.(\w+)',s))
-units=dict(re.findall(r'SeriesType\.(\w+), "([^"]+)"',(root/'app/schemas/enums/series_types.py').read_text()))
-unit_map={'bpm':'count/min','brpm':'count/min','ms':'ms','percent':'%','mg_dl':'mg/dL','mmHg':'mmHg','cm':'cm','kg':'kg','kg_m2':'count','celsius':'degC','ml_kg_min':'ml/kg*min','meters':'m','count':'count','kcal':'kcal','minutes':'min','m_per_s':'m/s','watts':'W','dB':'dBASPL','liters':'L','L/min':'L/min','rpm':'count/min','score':'count'}
-# These server mappings have incompatible dimensions or ambiguous units. Do not upload misleading values.
-excluded={'BloodAlcoholContent','PhysicalEffort','PeripheralPerfusionIndex','ElectrodermalActivity','AtrialFibrillationBurden','CrossCountrySkiingSpeed','PaddleSportsSpeed','RowingSpeed','NikeFuel','InsulinDelivery'}
-rows=[]
-for key,identifier in ids.items():
- if key not in maps: continue
- short=identifier.removeprefix('HKQuantityTypeIdentifier')
- if short in excluded: continue
- unit=unit_map[units[maps[key]]]; scale=1
- if short in ['Height','WalkingStepLength']: unit='m'
- if units[maps[key]]=='percent' and short not in ['BodyFatPercentage','WalkingDoubleSupportPercentage','WalkingAsymmetryPercentage','AppleWalkingSteadiness']: scale=100
- if short in ['WorkoutEffortScore','EstimatedWorkoutEffortScore']: unit='appleEffortScore'
- if short=='EnvironmentalSoundReduction': unit='dBASPL'
- group='activity'
- if any(x in short for x in ['Heart','Blood','Oxygen','Respiratory','VitalCapacity','Expiratory','Breathing']): group='vitals'
- elif any(x in short for x in ['Body','Height','Waist','Mass','Temperature']): group='body'
- elif any(x in short for x in ['Audio','Sound','Daylight','UV','WaterTemperature','Underwater']): group='environment'
- elif short in ['NumberOfTimesFallen','InhalerUsage','NumberOfAlcoholicBeverages']: group='other'
- title=re.sub(r'([a-z])([A-Z])',r'\1 \2',short).replace('Apple ','').replace('SDNN','(SDNN)').replace('VO2','VO₂')
- rows.append(dict(id=identifier,title=title,group=group,unit=unit,scale=scale))
-pathlib.Path('Relay/Health/Catalog.json').write_text(json.dumps(rows,indent=2)+'\n')
-pathlib.Path('docs/COVERAGE.md').write_text('# Health data coverage\n\nSource: Open Wearables 0.9.0, commit ff8527a52ad8a96cd1ebe8c19344295c934ae9dc; live server OpenAPI inspected 26 September 2026.\n\n'+str(len(rows))+' reviewed quantity mappings, plus sleep stages and workouts. Runtime availability depends on iPhone/iOS. All available history is queried without a date cutoff. Apple only returns records the user permits; an empty result does not prove permission was granted.\n\n## Included quantities\n\n| HealthKit type | Upload unit | Scale |\n|---|---|---|\n'+''.join(f'| {r["id"]} | {r["unit"]} | {r["scale"]} |\n' for r in rows)+'\nHeight and walking step length are sent in meters because this server multiplies them by 100. Body fat and walking ratios stay fractions because the server converts them. Oxygen saturation is sent as percent. Running lengths and waist circumference use centimeters; HRV/contact time use milliseconds.\n\n## Not yet transferable through this server contract\n\nNutrition and hydration; reproductive and symptom categories; mindfulness; ECG waveforms; audiograms; clinical records; medication records; activity summaries; workout routes/series; characteristics such as date of birth and blood type. These are not requested or presented as synced.\n\nThe following mapped quantities are excluded because the installed server uses incompatible or ambiguous dimensions: '+', '.join(sorted(excluded))+'.\n\nWorkout summaries, metadata and events are included; routes and high-frequency workout series are not. Uploaded metadata is preserved in the request but the server may not retain it in normalized tables.\n\nHealthKit deletions are recorded in an on-device journal, not deleted from the server: the SDK ingestion API has no deletion contract.\n\n## Receipt semantics\n\nHTTP 202 with a valid receipt confirms acceptance into the server queue, not completed normalization. UI counters mean records sent, not records verified in the database. Background delivery, real HealthKit coverage, and server ingestion require physical-device testing.\n')
-print(f'Wrote {len(rows)} reviewed quantity types')
+
+import json
+import pathlib
+import re
+import subprocess
+
+sdk = subprocess.run(["xcrun", "--sdk", "iphonesimulator", "--show-sdk-path"], capture_output=True, text=True, check=True)
+header = next(pathlib.Path(sdk.stdout.strip(), "System/Library/Frameworks/HealthKit.framework").rglob("HKTypeIdentifiers.h"))
+declared = re.findall(
+    r"HKQuantityTypeIdentifier const (HKQuantityTypeIdentifier\w+)\s+API_AVAILABLE\(ios\(([\d.]+)\)[^;]*;\s*//\s*([^,\n]*),\s*([^\n]+)",
+    header.read_text(),
+)
+
+# Friendlier units where Apple's canonical unit is awkward to read. Values are converted on the iPhone.
+UNITS = {
+    "HeartRate": "count/min",
+    "RespiratoryRate": "count/min",
+    "RunningStrideLength": "cm",
+    "WaistCircumference": "cm",
+    "VO2Max": "ml/kg*min",
+    "UVExposure": "count",
+    "ElectrodermalActivity": "mcS",
+    "DietarySodium": "mg",
+    "DietaryCholesterol": "mg",
+    "DietaryCaffeine": "mg",
+    "DietaryPotassium": "mg",
+    "DietaryCalcium": "mg",
+    "DietaryIron": "mg",
+    "DietaryMagnesium": "mg",
+    "DietaryPhosphorus": "mg",
+    "DietaryZinc": "mg",
+    "DietaryCopper": "mg",
+    "DietaryManganese": "mg",
+    "DietaryChloride": "mg",
+    "DietaryVitaminB6": "mg",
+    "DietaryVitaminC": "mg",
+    "DietaryVitaminE": "mg",
+    "DietaryThiamin": "mg",
+    "DietaryRiboflavin": "mg",
+    "DietaryNiacin": "mg",
+    "DietaryPantothenicAcid": "mg",
+    "DietarySelenium": "mcg",
+    "DietaryChromium": "mcg",
+    "DietaryMolybdenum": "mcg",
+    "DietaryIodine": "mcg",
+    "DietaryVitaminA": "mcg",
+    "DietaryVitaminB12": "mcg",
+    "DietaryVitaminD": "mcg",
+    "DietaryVitaminK": "mcg",
+    "DietaryFolate": "mcg",
+    "DietaryBiotin": "mcg",
+}
+VITALS = ("Heart", "Blood", "Oxygen", "Respiratory", "VitalCapacity", "Expiratory", "Breathing", "AtrialFibrillation",
+          "PeripheralPerfusion", "ElectrodermalActivity", "Glucose", "Insulin")
+BODY = ("Body", "Height", "Waist", "Mass", "Temperature")
+ENVIRONMENT = ("Audio", "Sound", "Daylight", "UV", "WaterTemperature", "Underwater")
+OTHER = ("NumberOfTimesFallen", "InhalerUsage", "NumberOfAlcoholicBeverages", "BloodAlcoholContent", "InsulinDelivery")
+
+
+def group(short: str) -> str:
+    if short.startswith("Dietary"):
+        return "nutrition"
+    if short in OTHER:
+        return "other"
+    if any(word in short for word in ENVIRONMENT) and short != "BodyTemperature":
+        return "environment"
+    if any(word in short for word in VITALS):
+        return "vitals"
+    if any(word in short for word in BODY):
+        return "body"
+    return "activity"
+
+
+def title(short: str) -> str:
+    words = re.sub(r"([a-z])([A-Z])", r"\1 \2", short.removeprefix("Dietary")).replace("Apple ", "")
+    return words.replace("UVExposure", "UV Exposure").replace("SDNN", "(SDNN)").replace("RMSSD", " (RMSSD)").replace("VO2", "VO₂").replace("  ", " ").strip()
+
+
+rows = []
+for identifier, ios, unit, aggregation in declared:
+    short = identifier.removeprefix("HKQuantityTypeIdentifier")
+    unit = UNITS.get(short, unit.strip())
+    rows.append({
+        "id": identifier,
+        "title": title(short),
+        "group": group(short),
+        "unit": unit,
+        # Fractions become percentages so values read as they do in the Health app.
+        "scale": 100 if unit == "%" else 1,
+        "aggregation": "cumulative" if aggregation.startswith("Cumulative") else "discrete",
+        "ios": ios,
+    })
+rows.sort(key=lambda row: (row["group"], row["title"]))
+pathlib.Path("Relay/Health/Catalog.json").write_text(json.dumps(rows, indent=2, ensure_ascii=False) + "\n")
+
+coverage = [
+    "# Health data coverage",
+    "",
+    f"Relay reads {len(rows)} HealthKit quantity types, sleep stages, mindful sessions, stand hours, heart rate"
+    " notifications, workouts and food entries, and sends them to Relay Hub. Generated from the HealthKit SDK headers"
+    " by `scripts/build_catalog.py`. Types that need a newer iOS than the device runs are skipped.",
+    "",
+    "Apple Health only returns records you allow. Empty results can mean no data or no access.",
+    "",
+    "## Quantity types",
+    "",
+    "| HealthKit type | Group | Unit sent | Daily statistic |",
+    "|---|---|---|---|",
+    *[
+        f"| {row['id']} | {row['group']} | {row['unit']} | {'sum' if row['aggregation'] == 'cumulative' else 'average, min, max'} |"
+        for row in rows
+    ],
+    "",
+    "Percentages are sent as 0–100. Heart and respiratory rates use count/min; stride length and waist"
+    " circumference use centimetres.",
+    "",
+    "## Other records",
+    "",
+    "- **Sleep stages** (`HKCategoryTypeIdentifierSleepAnalysis`): in bed, asleep, awake, core, deep and REM.",
+    "- **Mindful sessions, stand hours and heart rate notifications** (high, low, irregular rhythm), as category samples.",
+    "- **Workouts**: activity, duration, active energy, distance, heart rate statistics and workout events."
+    " Routes and high-frequency series are not uploaded.",
+    "- **Food entries** (`HKCorrelationTypeIdentifierFood`): group the nutrition samples of one meal.",
+    "",
+    "## Not uploaded",
+    "",
+    "Clinical records, medications, ECG waveforms, audiograms, reproductive health and symptom categories,"
+    " state of mind, workout routes, and characteristics such as date of birth or blood type.",
+    "",
+    "## Accuracy",
+    "",
+    "Raw samples keep their HealthKit UUIDs, timestamps, time zones, source apps and devices. Deletions in Apple"
+    " Health are sent to Relay Hub. Daily totals come from HealthKit's own statistics, which merge overlapping"
+    " sources such as iPhone and Apple Watch, rather than from adding raw samples.",
+    "",
+]
+pathlib.Path("docs/COVERAGE.md").write_text("\n".join(coverage))
+print(f"Wrote {len(rows)} quantity types")

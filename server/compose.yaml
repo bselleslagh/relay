@@ -1,0 +1,22 @@
+# Relay Hub. Publishes only on the host's loopback interface; expose it to your tailnet with
+# `tailscale serve` (see README.md). Secrets come from .env, which is not committed.
+services:
+  relay-hub:
+    build: .
+    image: relay-hub:local
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:${RELAY_HUB_PUBLISH_PORT:-8787}:8787"
+    volumes:
+      - relay-hub-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  relay-hub-data:

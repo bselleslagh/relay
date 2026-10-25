@@ -46,6 +46,6 @@ final class RelayAppDelegate: NSObject, UIApplicationDelegate {
         return true
     }
     func applicationProtectedDataDidBecomeAvailable(_ application: UIApplication) {
-        Task { @MainActor in await AppModel.shared.foreground() }
+        Task { @MainActor in _ = await AppModel.shared.sync() }
     }
 }

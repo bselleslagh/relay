@@ -26,7 +26,7 @@ struct HealthDataView: View {
                     Divider().padding(.horizontal, 18)
                     Button { sheet = .health } label: { RelayRow(title: "Manage Health access", symbol: "lock") }
                 }.smoked().buttonStyle(.plain)
-                Text("Only data you allow is shared. Some Apple Health types are not supported by this server.")
+                Text("Only data you allow is shared, and only with your own Relay Hub.")
                     .font(.caption).foregroundStyle(RelayTheme.muted).padding(.horizontal, 6)
             }.padding(.horizontal, 22).padding(.bottom, 28)
         }.relayScreen()
